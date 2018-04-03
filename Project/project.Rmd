@@ -2,6 +2,7 @@
 title: "Optimal control of neglected tropical diseases using a simple dynamic model"
 author: "Chris Hoover"
 date: "`r format(Sys.Date(), '%m-%d-%Y')`"
+math: TRUE
 output: github_document
 ---
 
