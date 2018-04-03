@@ -11,10 +11,20 @@ The first goal is to code the model and reproduce Figure 3c (below) from [Garchi
 
 ![](SupplementaryFiles/Fig3c.png)
 
-The model consists of two state variables, *I* and *W*, that correspond to the prevalence of infection in the human population and the degree of contamination of the environment with the disease-causing agent, respectively. The model equations are:
+The model consists of two state variables, *I* and *W*, that correspond to the prevalence of infection in the human population (e.i. proportion infected at time=*t*) and the degree of contamination of the environment with the disease-causing agent, respectively. We make the simplifying assumption that individuals can only be susceptible, *S*, or infected, *I*, meaning *S* + *I* = 1 and eliminating the need for a recovered *R* compartment as is typical of SIR models but would complicate things here. The model equations then are:
 
-$$\\frac{dI}{dt}=(\\beta\_EW+\\beta\_DI)S-\\gamma I $$
-
+$$\\frac{dI}{dt}=(\\beta\_EW+\\beta\_DI)(1-I)-\\gamma I $$
 $$\\frac{dW}{dt}=\\Omega+V\\sigma\\lambda I-\\delta W $$
 
-with variable definitions in table 1 below
+with parameter definitions and values in table 1 below
+
+| Parameter         |     Value| Description                                                       |
+|:------------------|---------:|:------------------------------------------------------------------|
+| *β*<sub>*E*</sub> |  9.26e-05| Transmission rate from environment to human population            |
+| *β*<sub>*D*</sub> |  5.55e-03| Human to human transmission rate                                  |
+| *γ*               |  3.00e-03| Rate of recovery from infected back to susceptible                |
+| *Ω*               |  0.00e+00| Recruitment rate of infectious agents in the environment          |
+| *V*               |  1.00e+00| Abundance of vectors/intermediate hosts/suitable environment      |
+| *λ*               |  1.00e+00| Recruitment rate of infectious agents by infectious individuals   |
+| *σ*               |  1.00e+00| Fraction of infectious agents produced that reach the environment |
+| *δ*               |  1.70e-02| Mortality rate of infectious agents in the environment            |

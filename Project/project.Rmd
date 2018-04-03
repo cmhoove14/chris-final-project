@@ -8,6 +8,8 @@ output: github_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(kableExtra)
 ```
 
 Neglected tropical diseases (NTDs) tend to be diseases of poverty that thrive in tropical, disadvantaged communities that often lack access to basic amenities such as clean water, sanitation, and healthcare. They are generally environmentally mediated meaning that some component of their transmission cycle depends on the environment (e.g. a vector, intermediate host, or free-living environmental stage). Control of NTDs generally relies on the administration of drugs that cure individuals from the disease and may confer short-term immunity. However, following drug administration, people are often reinfected by the environmental stage(s) of the pathogen that persist through mass drug administration (MDA) campaigns. Additional interventions that target these environmental reservoirs are often available, but underutilized due to their indirect effects on improving individuals' health.
@@ -18,10 +20,31 @@ The first goal is to code the model and reproduce Figure 3c (below) from [Garchi
 
 ![](SupplementaryFiles/Fig3c.png)
 
-The model consists of two state variables, $I$ and $W$, that correspond to the prevalence of infection in the human population and the degree of contamination of the environment with the disease-causing agent, respectively. The model equations are:
+The model consists of two state variables, $I$ and $W$, that correspond to the prevalence of infection in the human population (e.i. proportion infected at time=$t$) and the degree of contamination of the environment with the disease-causing agent, respectively. We make the simplifying assumption that individuals can only be susceptible, $S$, or infected, $I$, meaning $S+I=1$ and eliminating the need for a recovered $R$ compartment as is typical of SIR models but would complicate things here. The model equations then are:  
 
-$$\frac{dI}{dt}=(\beta_EW+\beta_DI)S-\gamma I $$
 
+$$\frac{dI}{dt}=(\beta_EW+\beta_DI)(1-I)-\gamma I $$
 $$\frac{dW}{dt}=\Omega+V\sigma\lambda I-\delta W $$
 
-with variable definitions in table 1 below
+with parameter definitions and values in table 1 below
+
+```{r table1, echo = FALSE, include = TRUE, dev="tikz" }
+tab1 <- data.frame(par = c("$\\beta_E$","$\\beta_D$","$\\gamma$","$\\Omega$",
+                     "$V$","$\\lambda$","$\\sigma$","$\\delta$"), 
+                   val = c(9.26e-5, 5.55e-3, round(1/360, 3), 0,
+                           1, 1, 1, round(1/60, 3)), 
+                   des = c("Transmission rate from environment to human population",
+                           "Human to human transmission rate",
+                           "Rate of recovery from infected back to susceptible",
+                           "Recruitment rate of infectious agents in the environment",
+                           "Abundance of vectors/intermediate hosts/suitable environment",
+                           "Recruitment rate of infectious agents by infectious individuals",
+                           "Fraction of infectious agents produced that reach the environment",
+                           "Mortality rate of infectious agents in the environment"))
+
+knitr::kable(tab1, row.names = FALSE, col.names = c("Parameter", "Value", "Description"),
+             caption = "Parameter values and desciptions used in the model") %>%
+  kable_styling(full_width = TRUE)
+```
+
+We make the simplifying assumptions that there is no exogenous production of infectious agents ($\Omega=0$) and that environment-human transmission is determined only by the transmission rate, $\beta_E$, with no role of vectors or intermediate hosts (i.e. $V=\sigma=\lambda=1$). This is approximately equivalent to a simple Cholera model.  
