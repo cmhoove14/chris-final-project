@@ -22,4 +22,3 @@ This project will be mostly simulation based but the model and parameters used f
 1) Explore model dynamics resulting from implementing proposed interventions alone and in combination. Replicate Fig 3c from [Garchitorena et al](http://rstb.royalsocietypublishing.org/content/372/1722/20160128)  
 2) Translate the model into a Markov decision process (MDP) solvable with stochastic dynamic programming (SDP) by following the "Six steps of stochastic dynamic programming" in [Marescot et al](https://besjournals.onlinelibrary.wiley.com/doi/full/10.1111/2041-210X.12082)  
 3) Find the optimal intervention stretagey for this simple disease model using SDP implemented with the R package MDPtoolbox
-3) 
