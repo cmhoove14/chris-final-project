@@ -1,30 +1,25 @@
 ---
-title: "ESPM-288 Final Project Proposal"
+title: "Optimal control of neglected tropical diseases using a simple dynamic model"
 author: "Chris Hoover"
 date: "April 2, 2018"
 output: github_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
-## R Markdown
+## Background:  
+Neglected tropical diseases (NTDs) tend to be diseases of poverty that thrive in tropical, disadvantaged communities that often lack access to basic amenities such as clean water, sanitation, and healthcare. They are generally environmentally mediated meaning that some component of their transmission cycle depends on the environment (e.g. a vector, intermediate host, or free-living environmental stage). Control of NTDs generally relies on the administration of drugs that cure individuals from the disease and may confer short-term immunity. However, following drug administration, people are often reinfected by the environmental stage(s) of the pathogen that persist through mass drug administration (MDA) campaigns. Additional interventions that target these environmental reservoirs are often available, but underutilized due to their indirect effects on improving individuals' health.
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+## Description:  
+Using a simple, generalizable model of NTD transmission presented in [Garchitorena et al](http://rstb.royalsocietypublishing.org/content/372/1722/20160128) I will investigate the ability of different interventions to effectively eliminate the disease from the human population. In this generalizable model, two interventions will be considered: 1) drug administration, implemented as a pulse reduction in the state variable, $I$, that reduces the prevalence of the disease in the population and 2) environmental remediation (e.g. improvement in sanitation, vector control), implemented as a permanent alteration of a model parameter, that reduces the transmission of the disease. 
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+## Data:  
+This project will be mostly simulation based but the model and parameters used for initial simulations/explorations will be drawn from [Garchitorena et al](http://rstb.royalsocietypublishing.org/content/372/1722/20160128)
 
-```{r cars}
-summary(cars)
-```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Analyses:  
+1) Explore model dynamics resulting from implementing proposed interventions alone and in combination. Replicate Fig 3c from [Garchitorena et al](http://rstb.royalsocietypublishing.org/content/372/1722/20160128)  
+2) Translate the model into a Markov decision process (MDP) solvable with stochastic dynamic programming (SDP) by following the "Six steps of stochastic dynamic programming" in [Marescot et al](https://besjournals.onlinelibrary.wiley.com/doi/full/10.1111/2041-210X.12082)  
+3) Find the optimal intervention stretagey for this simple disease model using SDP implemented with the R package MDPtoolbox
+3) 
