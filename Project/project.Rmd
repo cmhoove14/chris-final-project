@@ -1,15 +1,18 @@
 ---
-title: "Optimal control of neglected tropical diseases using a simple dynamic model"
+title: Optimal control of neglected tropical diseases using a simple dynamic model
 author: "Chris Hoover"
 date: "`r format(Sys.Date(), '%m-%d-%Y')`"
 math: TRUE
 output: github_document
 ---
 
+-------
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 library(tidyverse)
 library(kableExtra)
+library(knitr)
 ```
 
 Neglected tropical diseases (NTDs) tend to be diseases of poverty that thrive in tropical, disadvantaged communities that often lack access to basic amenities such as clean water, sanitation, and healthcare. They are generally environmentally mediated meaning that some component of their transmission cycle depends on the environment (e.g. a vector, intermediate host, or free-living environmental stage). Control of NTDs generally relies on the administration of drugs that cure individuals from the disease and may confer short-term immunity. However, following drug administration, people are often reinfected by the environmental stage(s) of the pathogen that persist through mass drug administration (MDA) campaigns. Additional interventions that target these environmental reservoirs are often available, but underutilized due to their indirect effects on improving individuals' health.
@@ -23,7 +26,8 @@ The first goal is to code the model and reproduce Figure 3c (below) from [Garchi
 The model consists of two state variables, $I$ and $W$, that correspond to the prevalence of infection in the human population (e.i. proportion infected at time=$t$) and the degree of contamination of the environment with the disease-causing agent, respectively. We make the simplifying assumption that individuals can only be susceptible, $S$, or infected, $I$, meaning $S+I=1$ and eliminating the need for a recovered $R$ compartment as is typical of SIR models but would complicate things here. The model equations then are:  
 
 
-$$\frac{dI}{dt}=(\beta_EW+\beta_DI)(1-I)-\gamma I $$
+$$\frac{dI}{dt}=(\beta_EW+\beta_DI)(1-I)-\gamma I $$  
+
 $$\frac{dW}{dt}=\Omega+V\sigma\lambda I-\delta W $$
 
 with parameter definitions and values in table 1 below
