@@ -1,7 +1,7 @@
 Optimal control of neglected tropical diseases using a simple dynamic model
 ================
 Chris Hoover
-04-03-2018
+04-04-2018
 
 ------------------------------------------------------------------------
 
