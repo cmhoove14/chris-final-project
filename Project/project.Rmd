@@ -7,6 +7,7 @@ output:
   pdf_document:
   header-includes: 
     - \usepackage{bf}
+    - \usepackage{threeparttable}
 geometry: margin=0.5in
 ---
 
