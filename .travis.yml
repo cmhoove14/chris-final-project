@@ -7,5 +7,6 @@ script:
   - R -f render_rmds.R
 before_install:
   - tlmgr install threeparttablex
+  - tlmgr install makecell
 #latex: false
 
