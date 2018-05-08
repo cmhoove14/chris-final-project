@@ -5,5 +5,5 @@ sudo: false
 cache: packages
 script: 
   - R -f render_rmds.R
-latex: false
+#latex: false
 
