@@ -370,3 +370,228 @@ for (i in 1:length(states)) {
 
 Now we have the transition and utility matrices. The transition matrix indicates for a given starting prevalence, $I_t$, and action $A_t$, the probability of the state at $I_{t+1}$. Since this model is deterministic, the transition matrix contains a whole bunch of 0s and some 1s that indicate the value $I_{t+1}|I_t,A_t$. Future models will incorporate stochasticity in transmission to spread the probability around. The utility matrix simply represents the utility of each action, $A_t$ applied to each starting prevalence, $I_t$.
 
+```{r}
+# THis code is adopted from the wolf culling example in the Marescot et al paper
+# it doesn't actually use MDPtoolbox directly, but manually does the same thing
+
+# Discount factor
+discount <- mdp_pars["delta"]
+
+# Action value vector at tmax
+Vtmax <- numeric(length(states))
+
+# Action value vector at t and t+1
+Vt <- numeric(length(states))
+Vtplus <- numeric(length(states))
+
+# Optimal policy vector
+D <- numeric(length(states))
+
+# Finite time horizon of 20 years
+Tmax <- 20
+
+# The backward iteration consists in storing action values in the vector Vt which is the maximum of
+# utility plus the future action values for all possible next states. Knowing the final action 
+# values, we can then backwardly reset the next action value Vtplus to the new value Vt. We start 
+# The backward iteration at time T-1 since we already defined the action value at Tmax.
+for (t in (Tmax-1):1) {
+
+# We define a matrix Q that stores the updated action values for #all states (rows)
+	# actions (columns)
+	Q <- array(0, dim=c(length(states), length(A)))
+	
+	for (i in 1:length(A)) {
+	
+# For each capital allocation proportion we fill for all states values (row) 
+# the ith column (Action) of matrix Q
+# The utility of the ith action recorded for all states is 
+# added to the product of the transition matrix of the ith 
+# action by the action value of all states 
+		Q[,i] <- utility[,i] + discount*(transition[,,i] %*% Vtplus)
+	
+	} # end of loop
+
+	# Find the optimal action value at time t is the maximum of Q
+	Vt <- apply(Q, 1, max)
+
+# After filling vector Vt of the action values at all states, 
+# we update the vector Vt+1 to Vt and we go to the next step standing 
+# for previous time t-1, since we iterate backward
+	Vtplus <- Vt
+
+} # end of the time loop
+
+# Find optimal action for each state
+for (i in 1:length(states)) {
+# We look for each state which column of Q corresponds to the 
+# maximum of the last updated value 
+# of Vt (the one at time t+1). If the index vector is longer than 1 
+# (if there is more than one optimal value we chose the median capital allocation rate)
+	D[i] <- A[(median(which(Q[i,] == Vt[i])))]
+
+}
+
+plot(states, D, xlab="Initial Prevalence", ylab="Optimal Allocation", type = 'l', lwd = 2)
+
+```
+
+This isn't exactly what we were expecting, let's do some debugging. MDPtoolbox has a function to check that our transition and utility matrices are formatted properly and contain the right kind of data, let's use that
+
+```{r}
+mdp_check(transition, utility)
+```
+
+So looks like some rows in our transition matrix are not summing to 1. Let's try and figure out why.
+
+```{r}
+#Get sum of rows in the slice of the array in which A_t = 50
+rowSums(transition[,,50])
+
+# Get indices of states vector that returns rowsum of 0 rather than 1  
+bad_vec <- which(rowSums(transition[,,50]) == 0)
+
+#Run the mdp function with states that return rowsum=0 and try and match it to indices in states vector
+# this is what is being done when building the transition matrix
+bad_nextpops <- map2_dbl(rep(0.5, length(bad_vec)), states[bad_vec], mdp_1yr)
+round(bad_nextpops, 2)
+
+which(states == round(bad_nextpops, 2))
+
+#So for some reason, rounding the output from the mdp_1yr function to two digits
+#and getting the corresponding vector index in states is not working for these values
+#Value of nextpop
+round(bad_nextpops[1], 2)
+#Confirmed it is 0.41
+round(bad_nextpops[1], 2) == 0.41
+
+#Value of states
+states[42]
+#Confirm is is 0.41
+states[42] == 0.41
+
+#WHAT???
+
+#Try another value from states
+states[41]
+states[41] == 0.40
+
+# THIS works??? 
+
+# So that is VERY STRANGE... but found the function "pmatch" that seems to alleviate this
+# by converting things to characters and then matching them
+pmatch(round(bad_nextpops[1], 2), states)
+```
+
+```{r trans_matrix_redo, cache = TRUE}
+#Transition matrix for I states and A actions
+transition2 <- array(0, dim = c(length(states), length(states), length(A)))
+
+#Utility matrix
+utility2 <- array(0, dim = c(length(states), length(A)))
+
+# Fill in the transition and utility matrices
+# Loop on all states 
+# TODO: make this Tidy
+for (i in 1:length(states)) {
+
+	# Loop on all actions
+	for (a in 1:length(A)) {
+
+# Calculate the transition state at the next step, given the current state i and the intervention, a
+		nextpop <- round(mdp_1yr(A_t = A[a], I_0 = states[i]), 2)
+		nextind <- pmatch(nextpop, states) #replace which[] with pmatch
+		
+#Since this model is deterministic, assign probability of 1 to value of I_t+1, everything else =0		
+		transition2[i, nextind, a] <- 1
+
+# Compute utility
+		utility2[i,a] <- get_util(nextpop)
+
+	} # end of action loop
+} # end of state loop
+
+# Run mdp check
+mdp_check(transition2, utility2)
+
+#No error which means all our rows sum to 1. Woohoo!
+```
+
+```{r try_again}
+# Action value vector at tmax
+Vtmax2 <- numeric(length(states))
+
+# Action value vector at t and t+1
+Vt2 <- numeric(length(states))
+Vtplus2 <- numeric(length(states))
+
+# Optimal policy vector
+D2 <- numeric(length(states))
+
+for (t in (Tmax-1):1) {
+
+# We define a matrix Q that stores the updated action values for #all states (rows)
+	# actions (columns)
+	Q2 <- array(0, dim=c(length(states), length(A)))
+	
+	for (i in 1:length(A)) {
+	
+# For each capital allocation proportion we fill for all states values (row) #the ith column (Action) of matrix Q
+# The utility of the ith action recorded for all states is 
+# added to the product of the transition matrix of the ith 
+# action by the action value of all states 
+		Q2[,i] <- utility2[,i] + discount*(transition2[,,i] %*% Vtplus2)
+	
+	} # end of the harvest loop
+
+	# Find the optimal action value at time t is the maximum of Q
+	Vt2 <- apply(Q2, 1, max)
+
+# After filling vector Vt of the action values at all states, 
+# we update the vector Vt+1 to Vt and we go to the next step standing 
+# for previous time t-1, since we iterate backward
+	Vtplus2 <- Vt2
+
+} # end of the time loop
+
+# Find optimal action for each state
+for (i in 1:length(states)) {
+# We look for each state which column of Q corresponds to the #maximum of the last updated value 
+# of Vt (the one at time t+1). If the index vector is longer than 1 #(if there is more than one optimal value we chose the minimum #harvest rate)
+	D2[i] <- A[(median(which(round(Q2[i,],1) == round(Vt2[i], 1))))]
+	#print(pmatch(Vt2[i], Q2[i,]))
+	  #A[(min(which(Q2[i,] == Vt2[i])))]
+	  #
+}
+# Remove 0 starting prevalence since 0 will remain at 0 and any intervention will be "optimal"
+as.data.frame(cbind(D2 = D2[-1], states = states[-1])) %>% 
+ggplot(aes(x = states, y = D2)) + geom_line(size = 1) + 
+    theme_bw() + ylab(expression(A[t])) + xlab(expression(I[t])) + stat_smooth() +
+    ggtitle("Optimal actions given starting prevalence")
+
+```
+
+Cool! The general trend makes sense: at low starting prevalence, we minimize prevalence over twenty years by reducing transmission via investment in environmental remediation. When prevalence is high, though, this environmental remediation must be supplemented with MDA to effectively reduce prevalence. This is in line with the findings of Garchitorenea et al as well: if all we do is annual MDA, we end up with those "sawtooth" curves in which prevalence inevitably bounces back after treatment, but with some environmental intervention added in, we can reduce that rate of bounce back and make progress towards elimination.
+
+We can also explain the jagged line by looking at some of the results a bit more closely:
+
+```{r inspect_results}
+#Each row of Q2 contains the output of our utility function summed over the time horizon (20 years)
+# for a given starting prevalence and each of the 100 possible valeus of A_t.
+data.frame(a_t = rep(A, 3),
+           i_0 = rep(c(50, 75, 90), each = length(A)),
+           Max_ut = c(Q2[51,], Q2[76,], Q2[91,])) %>% 
+  ggplot(aes(x = a_t, y = Max_ut, col = as.factor(i_0))) + geom_line(size = 1) + 
+    theme_bw() + guides(col=guide_legend(title=expression(I[t]))) + xlab(expression(A[t])) + ylab(expression(-Pi[T]))
+
+```
+
+This shows that there's not much variability in which action, $A_t$ is best given a starting prevalence $I_t$, i.e. for starting prevalence of $I-t=90\%$, values of $A_t$ between about 0.33 through about 0.97 all have the same total utility and the median value of $A_t$ which achieves this utility is what's plotted in the Optimal Allocation plot. Changing our time horizon to be something like 100 years rather than 20 may smooth this out by adding more variability in how the interventions affect summed prevalence over time, but 20 years is a reasonable time horizon to shoot for disease elimination, so we'll stick with it.  
+
+```{r, eval = FALSE, echo = FALSE, include=FALSE}
+data.frame(a_t = rep(A, 5),
+           i_0 = rep(c(0.01,0.1,0.25,0.5,0.75), each = length(A))) %>% 
+  mutate(i_t_plus1 = map2_dbl(a_t, i_0, mdp_1yr)) %>% 
+  ggplot(aes(x = a_t, y = i_t_plus1, col = as.factor(i_0))) + geom_line(size = 1) + 
+    theme_bw() + guides(col=guide_legend(title=expression(I[t]))) + xlab(expression(A[t])) + ylab(expression(I[t+1]))
+```
+
