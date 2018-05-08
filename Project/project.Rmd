@@ -452,7 +452,7 @@ mdp_check(transition, utility)
 
 So looks like some rows in our transition matrix are not summing to 1. Let's try and figure out why.
 
-```{r prob_id}
+```{r prob_id, eval=FALSE}
 #Get sum of rows in the slice of the array in which A_t = 50
 rowSums(transition[,,50])
 
