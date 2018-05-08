@@ -2,13 +2,7 @@
 title: "Optimal control of neglected tropical diseases using a simple dynamic model"
 author: "Chris Hoover"
 date: "May 18, 2018"
-output: 
-  pdf_document: 
-    latex_engine: xelatex
-  header-includes: 
-    - \usepackage{bf}
-    - \usepackage{threeparttable}
-
+output: pdf_document 
 geometry: margin=0.5in
 ---
 
