@@ -5,5 +5,7 @@ sudo: false
 cache: packages
 script: 
   - R -f render_rmds.R
+before_install:
+  - tlmgr install threeparttablex
 #latex: false
 
