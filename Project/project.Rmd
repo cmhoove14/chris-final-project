@@ -31,9 +31,9 @@ The first goal is to code the model and reproduce Figure 3c (below) from [Garchi
 
 The model consists of two state variables, $I$ and $W$, that correspond to the prevalence of infection in the human population (i.e. proportion infected at time=$t$) and the degree of contamination of the environment with the disease-causing agent, respectively. We make the simplifying assumption that individuals can only be susceptible, $S$, or infected, $I$, meaning $S+I=1$ and eliminating the need for a recovered $R$ compartment as is typical of SIR models but would complicate things here. The model equations then are:  
 
-\[\frac{dI}{dt}=(\beta_EW+\beta_DI)(1-I)-\gamma I \] 
+$$\frac{dI}{dt}=(\beta_EW+\beta_DI)(1-I)-\gamma I $$ 
 
-\[\frac{dW}{dt}=\Omega+V\sigma\lambda I-\rho W \]
+$$\frac{dW}{dt}=\Omega+V\sigma\lambda I-\rho W $$
 
 with parameter definitions and values in table 1 below
 
@@ -58,16 +58,16 @@ knitr::kable(tab1, row.names = TRUE, col.names = c("Value", "Description"), form
 
 We start by making the simplifying assumption that there is no exogenous production of infectious agents ($\Omega=0$) and that environment-human transmission is determined only by the transmission rate, $\beta_E$, with no role of vectors or intermediate hosts (i.e. $V=\sigma=\lambda=1$). This is approximately equivalent to a simple Cholera model with the form: 
 
-\[\frac{dI}{dt}=(\beta_EW+\beta_DI)(1-I)-\gamma I \] 
+$$\frac{dI}{dt}=(\beta_EW+\beta_DI)(1-I)-\gamma I $$  
 
-\[\frac{dW}{dt}=I-\rho W \]
+$$\frac{dW}{dt}=I-\rho W $$
 
 With this simplified model, we can get the equilibrium estimates of $W$ and $I$:
-\[\frac{dW}{dt}=I-\rho W\]
+$$\frac{dW}{dt}=I-\rho W$$  
 At equilibrium:  
-\[W^*=\frac{I}{\rho}\]
+$$W^*=\frac{I}{\rho}$$
 Substituting we get the following quadratic with solutions at $I^*=0$ and $I^*=\text{endemic equilibrium}$:
-\[0=\Big(\frac{\beta_EI^*}{\rho}+\beta_DI^*\Big)\Big(1-I^*\Big)-\gamma I^* \]
+$$0=\Big(\frac{\beta_EI^*}{\rho}+\beta_DI^*\Big)\Big(1-I^*\Big)-\gamma I^* $$
 
 Now we use these equilibrium estimates as starting values for the continuous time model and simulate ten years of interventions with the `deSolve` package to reproduce Fig 3c 
 
@@ -192,7 +192,8 @@ Looks about right!
 ## Part 2: Translate the model into a Markov Decision Process (MDP) solvable with stochastic dynamic programming (SDP)   
 Next we want to translate our system of continuous time differential equations into a Markov Decision Process (MDP) consisting of **1)** a Markov chain in which the state of the system at time $t+1$ is dependent only on the current state of the system (i.e. the state at $t$) and **2)** a decision or control action that is being made at each state transition (i.e. from $t$ to $t+1$). We therefore want a single, discrete time equation that captures about the same dynamics of our simple disease system.
 
-We'll again start with the assumption that the dynamics of the infectious agents in the environment are faster than the dynamics of the prevalence in the human population, therefore they reach a steady state equilibrium: \[W^*=\frac{I}{\rho}\] Again, substituting we get: \[\frac{dI}{dt}=\Big(\frac{\beta_EI}{\rho}+\beta_DI\Big)\Big(1-I\Big)-\gamma I \] which can be translated to a discrete time model as: \[I_{t+1}=I_t+\Big(\frac{\beta_EI_t}{\rho}+\beta_DI_t\Big)\Big(1-I_t\Big)-\gamma I_t \] let's check to make sure that the dynamics of the continuous time model hold in this simplified, discrete time version of the model.
+We'll again start with the assumption that the dynamics of the infectious agents in the environment are faster than the dynamics of the prevalence in the human population, therefore they reach a steady state equilibrium: $$W^*=\frac{I}{\rho}$$ Again, substituting we get: $$\frac{dI}{dt}=\Big(\frac{\beta_EI}{\rho}+\beta_DI\Big)\Big(1-I\Big)-\gamma I $$
+which can be translated to a discrete time model as: $$I_{t+1}=I_t+\Big(\frac{\beta_EI_t}{\rho}+\beta_DI_t\Big)\Big(1-I_t\Big)-\gamma I_t $$ let's check to make sure that the dynamics of the continuous time model hold in this simplified, discrete time version of the model.
 
 ```{r discrete_time}
 #Discrete time version of the mode with functionality for MDA action if MDA=1 and no effect if MDA = 0
@@ -275,11 +276,13 @@ We define the decision variable $A_t$ as the proportion of capital, $M$, committ
 
 4. **Build a transition model describing the system's dynamics as a function of the decision variable and the system state in the prior time step**  
 Beginning with the discrete time model above, we have: 
-\[I_{t+1}=I_t+\Big(\frac{\beta_EI_t}{\rho}+\beta_DI_t\Big)\Big(1-I_t\Big)-\gamma I_t \]
-Incorporating interventions based on our decision variable, $A_t$ gives us: \[I_{t+1}=I_t+\Big(\frac{\beta_EI_t}{\rho+M(1-A_t)\mu}+\beta_DI_t\Big)\Big(1-I_t\Big)-I_t(\gamma+MA_t\theta) \] Where $\theta$ is a constant that converts capital, $M$ to units of prevalence and $\mu$ is a constant that converts $M$ to the same units as the mortality rate of infectious agents in the environment.   
+$$I_{t+1}=I_t+\Big(\frac{\beta_EI_t}{\rho}+\beta_DI_t\Big)\Big(1-I_t\Big)-\gamma I_t $$
+Incorporating interventions based on our decision variable, $A_t$ gives us: $$I_{t+1}=I_t+\Big(\frac{\beta_EI_t}{\rho+M(1-A_t)\mu}+\beta_DI_t\Big)\Big(1-I_t\Big)-I_t(\gamma+MA_t\theta) $$ 
+Where $\theta$ is a constant that converts capital, $M$ to units of prevalence and $\mu$ is a constant that converts $M$ to the same units as the mortality rate of infectious agents in the environment.   
 
 5. **Define the utility function $U_t(X_t,A_t)$ representing the desirability of acting in a given state**  
- \[\max_{A}C=\max_{A}\sum_0^T\frac{{-\Pi(I_t)}}{\delta_t}\] where \[\Pi(I_t)=dI_t\] $d$ is the cost associated with having prevalence of $I_t$ and $A_t$ is the proportion of that capital allocated towards drug administration (with the rest allocated towards environmental intervention). We're maximizing the negative costs, aka minimizing the costs.
+ $$\max_{A}C=\max_{A}\sum_0^T\frac{{-\Pi(I_t)}}{\delta_t}$$ 
+where $\Pi(I_t)=dI_t$, $d$ is the cost associated with having prevalence of $I_t$ and $A_t$ is the proportion of that capital allocated towards drug administration (with the rest allocated towards environmental intervention). We're maximizing the negative costs, aka minimizing the costs.
 
 6. **Determine the optimal solution of the optimization problem**  
 Step 6 is Part 3, see below
@@ -570,7 +573,7 @@ ggplot(aes(x = states, y = D2)) + geom_line(size = 1) +
 
 ```
 
-Cool! The general trend makes sense: at low starting prevalence, we minimize prevalence over twenty years by reducing transmission via investment in environmental remediation. When prevalence is high, though, this environmental remediation must be supplemented with MDA to effectively reduce prevalence. This is in line with the findings of Garchitorenea et al as well: if all we do is annual MDA, we end up with those "sawtooth" curves in which prevalence inevitably bounces back after treatment, but with some environmental intervention added in, we can reduce that rate of bounce back and make progress towards elimination.
+Cool! The general trend makes sense: at low starting prevalence, we minimize prevalence over twenty years by reducing transmission via investment in environmental remediation (e.g. $A_t\rightarrow0$). When prevalence is high, though, this environmental remediation must be supplemented with MDA to effectively reduce prevalence (e.g. $A_t\rightarrow1$). This is in line with the findings of Garchitorenea et al as well: if all we do is annual MDA, we end up with those "sawtooth" curves in which prevalence inevitably bounces back after treatment, but with some environmental intervention added in, we can reduce that rate of bounce back and make progress towards elimination.
 
 We can also explain the jagged line by looking at some of the results a bit more closely:
 
