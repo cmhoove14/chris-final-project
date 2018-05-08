@@ -52,8 +52,7 @@ tab1 <- data.frame(val = as.character(c(9.26e-5, 5.55e-3, round(1/360, 3), 0,
 rownames(tab1) <- c("$\\beta_E$","$\\beta_D$","$\\gamma$","$\\Omega$",
                      "$V$","$\\lambda$","$\\sigma$","$\\rho$")
 
-knitr::kable(tab1, row.names = TRUE, col.names = c("Value", "Description"), format = "latex", escape = FALSE,
-             caption = "Parameter values and descriptions used in the model")
+knitr::kable(tab1, row.names = TRUE, col.names = c("Value", "Description"), format = "latex", escape = FALSE, caption = "Parameter values and descriptions used in the model")
 ```
 
 We start by making the simplifying assumption that there is no exogenous production of infectious agents ($\Omega=0$) and that environment-human transmission is determined only by the transmission rate, $\beta_E$, with no role of vectors or intermediate hosts (i.e. $V=\sigma=\lambda=1$). This is approximately equivalent to a simple Cholera model with the form: 
@@ -102,8 +101,8 @@ simp_mod = function(t, n, p){
 } 
   
 #Events representing interventions to implement in the model
-n_years <- 10       #Simulate 10 years of annual intervention
-drug_efficacy = 0.9 #90% reduction in prevalence at each drug treatment
+n_years <- 10                  #Simulate 10 years of annual intervention
+drug_efficacy = 0.9            #90% reduction in prevalence at each drug treatment
 run_time <- c(1:(365*n_years)) #Run model for 10 years
 
 #data frame with event times for drug administration
@@ -116,13 +115,13 @@ drugs <- data.frame(var=rep('I', times = n_years),
 drug_only <- as.data.frame(ode(get_eq(pars), run_time, simp_mod, pars,
                                events = list(data = drugs)))
 
-#Double mortality rate of environmental infectious agents for environmental intervention
+#Double environmental mortality rate 
 pars_env <- pars
 pars_env["rho"] <- pars["rho"] * 2 
 
 #Run model with annual drug administration and environmental intervention 
 drug_env <- as.data.frame(ode(get_eq(pars), run_time, simp_mod, pars_env,
-                               events = list(data = drugs)))
+                              events = list(data = drugs)))
 
 #Plot results
 rbind(drug_env, drug_only) %>% 
@@ -136,7 +135,7 @@ rbind(drug_env, drug_only) %>%
 
 Looks a little bit different from Fig 3c in that there's a higher starting prevalence and more rebound between drug treatments in the `Drug + Env` group. This is likely due to transmission parameters that are too high, so let's check that out.
 
-```{r}
+```{r r0_fx}
 #Function to get R0 estimate given model parameters
 get_r0 <- function(parameters){
   with(as.list(parameters),{
@@ -153,7 +152,7 @@ get_r0(pars)
 
 So $R_0=4$ with the parameters pulled from the SI, but Fig3c says $R_0=3$. Let's see if we can bring the transmission parameters down a bit and get closer to Fig3c.
 
-```{r}
+```{r fix_r0}
 r0 <- 3
 pars2 <- pars
 
@@ -166,7 +165,7 @@ get_r0(pars2)
 
 Now that we have the same $R_0$, let's try the figure again
 
-```{r}
+```{r plot_fix}
 # Rerun model with each intervention scenario and new parameter sets
 drug_only2 <- as.data.frame(ode(get_eq(pars2), run_time, simp_mod, pars2,
                                 events = list(data = drugs)))
@@ -192,11 +191,15 @@ Looks about right!
 ## Part 2: Translate the model into a Markov Decision Process (MDP) solvable with stochastic dynamic programming (SDP)   
 Next we want to translate our system of continuous time differential equations into a Markov Decision Process (MDP) consisting of **1)** a Markov chain in which the state of the system at time $t+1$ is dependent only on the current state of the system (i.e. the state at $t$) and **2)** a decision or control action that is being made at each state transition (i.e. from $t$ to $t+1$). We therefore want a single, discrete time equation that captures about the same dynamics of our simple disease system.
 
-We'll again start with the assumption that the dynamics of the infectious agents in the environment are faster than the dynamics of the prevalence in the human population, therefore they reach a steady state equilibrium: $$W^*=\frac{I}{\rho}$$ Again, substituting we get: $$\frac{dI}{dt}=\Big(\frac{\beta_EI}{\rho}+\beta_DI\Big)\Big(1-I\Big)-\gamma I $$
-which can be translated to a discrete time model as: $$I_{t+1}=I_t+\Big(\frac{\beta_EI_t}{\rho}+\beta_DI_t\Big)\Big(1-I_t\Big)-\gamma I_t $$ let's check to make sure that the dynamics of the continuous time model hold in this simplified, discrete time version of the model.
+We'll again start with the assumption that the dynamics of the infectious agents in the environment are faster than the dynamics of the prevalence in the human population, therefore they reach a steady state equilibrium: 
+$$W^*=\frac{I}{\rho}$$ 
+Again, substituting we get: $$\frac{dI}{dt}=\Big(\frac{\beta_EI}{\rho}+\beta_DI\Big)\Big(1-I\Big)-\gamma I $$
+which can be translated to a discrete time model as: $$I_{t+1}=I_t+\Big(\frac{\beta_EI_t}{\rho}+\beta_DI_t\Big)\Big(1-I_t\Big)-\gamma I_t $$ 
+let's check to make sure that the dynamics of the continuous time model hold in this simplified, discrete time version of the model.
 
 ```{r discrete_time}
-#Discrete time version of the mode with functionality for MDA action if MDA=1 and no effect if MDA = 0
+#Discrete time version of the model with functionality for MDA action 
+# if MDA=1 and no effect if MDA = 0
 discrete_mod <- function(I, parameters, MDA=0){
   with(as.list(parameters),{
     ((beta_e * I)/rho + beta_d * I)*(1-I) - gamma*I - MDA*drug_efficacy*I
@@ -206,18 +209,20 @@ discrete_mod <- function(I, parameters, MDA=0){
 discrete_sim <- function(time, I_0_drug, I_0_env, model, 
                          drug_parameters, env_parameters){
   
-  #Initialize vectors to fill  
+#Initialize vectors to fill  
   drug_fill <- vector("numeric", length = time)
     drug_fill[1] <- I_0_drug
   env_fill <- vector("numeric", length = time)
     env_fill[1] <- I_0_env
   
-  #Run models over time with MDA occurring in same years as above in continuous time model    
+#Run models over time with MDA occurring in same years as above in continuous time model    
   for(t in 1:(time-1)){
     mda = ifelse(t %in% (c(0:(n_years-1))*365 + 1), 1, 0)
     
-    drug_fill[t+1] <- drug_fill[t] + model(I = drug_fill[t], parameters = drug_parameters, MDA = mda)
-    env_fill[t+1] <- env_fill[t] + model(I = env_fill[t], parameters = env_parameters, MDA = mda)
+    drug_fill[t+1] <- drug_fill[t] + model(I = drug_fill[t], 
+                                           parameters = drug_parameters, MDA = mda)
+    env_fill[t+1] <- env_fill[t] + model(I = env_fill[t], 
+                                         parameters = env_parameters, MDA = mda)
   }
     
   #Return results    
@@ -241,7 +246,7 @@ ggplot(test_discrete, aes(x = Time/365, y = Prevalence, lty = Intervention)) +
 
 It looks like our MDA intervention packs a bit more punch in this version of the model. That makes sense since we've simplified the environmental dynamics. To compensate, lets bump up the transmission parameter a bit.
 
-```{r discrete_mod_mod}
+```{r discrete_mod}
 #Bump up environment to human transmission parameter by 50%
   pars3 <- pars2
     pars3["beta_e"] <- pars2["beta_e"] * 1.5 
@@ -263,7 +268,7 @@ ggplot(test_discrete2, aes(x = Time/365, y = Prevalence, lty = Intervention)) +
 
 That looks closer to what we started with, let's continue.
 
-Now we'll work through the "Six steps of stochastic dynamic programming" as described in [Marescot et al](https://besjournals.onlinelibrary.wiley.com/doi/full/10.1111/2041-210X.12082) to get our MDP and set ourselves up for analysis 
+Now we'll work through the "Six steps of stochastic dynamic programming" as described in [Marescot et al](https://besjournals.onlinelibrary.wiley.com/doi/full/10.1111/2041-210X.12082) to get our MDP and set ourselves up for optimization 
 
 1. **Define the optimization objective of the problem.**  
 Our objective is to minimize the costs, $C$, associated with 1) infection of individuals and 2) implementing interventions to reduce their infections  
@@ -278,17 +283,17 @@ We define the decision variable $A_t$ as the proportion of capital, $M$, committ
 Beginning with the discrete time model above, we have: 
 $$I_{t+1}=I_t+\Big(\frac{\beta_EI_t}{\rho}+\beta_DI_t\Big)\Big(1-I_t\Big)-\gamma I_t $$
 Incorporating interventions based on our decision variable, $A_t$ gives us: $$I_{t+1}=I_t+\Big(\frac{\beta_EI_t}{\rho+M(1-A_t)\mu}+\beta_DI_t\Big)\Big(1-I_t\Big)-I_t(\gamma+MA_t\theta) $$ 
-Where $\theta$ is a constant that converts capital, $M$ to units of prevalence and $\mu$ is a constant that converts $M$ to the same units as the mortality rate of infectious agents in the environment.   
+Where $\theta$ is a constant that converts capital, $M$, to units of prevalence and $\mu$ is a constant that converts $M$ to the same units as the mortality rate of infectious agents in the environment.   
 
 5. **Define the utility function $U_t(X_t,A_t)$ representing the desirability of acting in a given state**  
  $$\max_{A}C=\max_{A}\sum_0^T\frac{{-\Pi(I_t)}}{\delta_t}$$ 
-where $\Pi(I_t)=dI_t$, $d$ is the cost associated with having prevalence of $I_t$ and $A_t$ is the proportion of that capital allocated towards drug administration (with the rest allocated towards environmental intervention). We're maximizing the negative costs, aka minimizing the costs.
+where $\Pi(I_t)=dI_t+M$, $d$ is the cost associated with having prevalence of $I_t$ and $M$ is the capital spent on drug administration and environmental intervention. We assume capital spent each year is the same and therefore only consider the cost of infection, $dI_t$. We're also maximizing the negative costs, aka minimizing the costs here.
 
 6. **Determine the optimal solution of the optimization problem**  
 Step 6 is Part 3, see below
 
 ## Part 3: Find the optimal solution using SDP in the `MDPtoolbox` R package  
-Let's translate the problem outlined above into code, borrowing from the wolf culling example in Marescot et al  
+Let's translate the problem outlined above into code, borrowing from the wolf culling example in Marescot et al. We also want to define some new parameters that control how the interventions act in the model. For MDA, we'll assume that if all capital is devoted to MDA, we get the same reduction in prevalence as in the models above, 90%. This is pretty idealized, but we'll stick with it since we're trying to build off of that analysis here. For the environmental intervention, we'll also stick with the above simulation and say that if we commit all capital to it, we double the environmental mortality rate. This should produce some interesting results since we won't actually be able to implement the intervention modeled above in which both of these interventions occurr simultaneously.  
 
 ```{r trans_matrix, cache = TRUE}
 #Vector of all possible states, i.e. prevalence ranging from 0 to 1  
@@ -302,10 +307,11 @@ A <- seq(0, 1, 0.01)
 mdp_pars <- c(pars3, 
               "d" = 100,      #Arbitrary cost of having prevalence of I_t
               "M" = 1,        #Arbitrary capital available to spend on MDA
-              #Somewhat arbitrary scaling of capital spent on MDA to reduction in prevalence, 
+              # Scaling of capital spent on MDA to reduction in prevalence, 
               #  if M=1, 90% reduction (just as in simulations above)              
               "theta" = 0.9,  
-              #If all capital spent on environmental intervention, double the environmental mortality rate
+              #If all capital spent on environmental intervention, 
+              # double the environmental mortality rate
               "mu" = as.numeric(pars_env2["rho"]),  
               "delta" = 0.9)  #Arbitrary discounting rate  
 
@@ -314,7 +320,6 @@ mdp_pars <- c(pars3,
 mdp_1yr <- function(A_t, I_0, time = 365, model = mdp_mod, pars = mdp_pars, M=1){
   with(as.list(pars),{
     
-  
   #Initialize vector to fill  
   I_vec <- vector("numeric", length = time+1)
     I_vec[1] <- I_0
@@ -326,8 +331,9 @@ mdp_1yr <- function(A_t, I_0, time = 365, model = mdp_mod, pars = mdp_pars, M=1)
   for(t in 1:(time)){
     a_mda <- ifelse(t == 1, A_t, 0)  #MDA occurs in first time step
     I_vec[t+1] <- I_vec[t] +  
-                  ((beta_e * I_vec[t])/(rho+a_env*M*mu) + beta_d * I_vec[t])*(1-I_vec[t]) - 
-                  I_vec[t]*(gamma + M*a_mda*I_vec[t]*theta)
+                  ((beta_e * I_vec[t])/(rho+a_env*M*mu) + 
+                    beta_d * I_vec[t])*(1-I_vec[t]) - 
+                  I_vec[t]*(gamma + M*a_mda*theta)
   }
     
   #Return I_t at t=365 post implementation of A_t    
@@ -336,9 +342,9 @@ mdp_1yr <- function(A_t, I_0, time = 365, model = mdp_mod, pars = mdp_pars, M=1)
 }
 
 #Define utility function 
-get_util <- function(x){
+get_util <- function(I){
   with(as.list(mdp_pars),{
-    -d*x
+    -d*I
   })
 }
 
@@ -373,7 +379,7 @@ for (i in 1:length(states)) {
 
 Now we have the transition and utility matrices. The transition matrix indicates for a given starting prevalence, $I_t$, and action $A_t$, the probability of the state at $I_{t+1}$. Since this model is deterministic, the transition matrix contains a whole bunch of 0s and some 1s that indicate the value $I_{t+1}|I_t,A_t$. Future models will incorporate stochasticity in transmission to spread the probability around. The utility matrix simply represents the utility of each action, $A_t$ applied to each starting prevalence, $I_t$.
 
-```{r}
+```{r optimal}
 # THis code is adopted from the wolf culling example in the Marescot et al paper
 # it doesn't actually use MDPtoolbox directly, but manually does the same thing
 
@@ -440,13 +446,13 @@ plot(states, D, xlab="Initial Prevalence", ylab="Optimal Allocation", type = 'l'
 
 This isn't exactly what we were expecting, let's do some debugging. MDPtoolbox has a function to check that our transition and utility matrices are formatted properly and contain the right kind of data, let's use that
 
-```{r}
+```{r check}
 mdp_check(transition, utility)
 ```
 
 So looks like some rows in our transition matrix are not summing to 1. Let's try and figure out why.
 
-```{r}
+```{r prob_id}
 #Get sum of rows in the slice of the array in which A_t = 50
 rowSums(transition[,,50])
 
@@ -462,23 +468,14 @@ which(states == round(bad_nextpops, 2))
 
 #So for some reason, rounding the output from the mdp_1yr function to two digits
 #and getting the corresponding vector index in states is not working for these values
-#Value of nextpop
-round(bad_nextpops[1], 2)
-#Confirmed it is 0.41
-round(bad_nextpops[1], 2) == 0.41
+# Here's an example of what's happening. I have no idea what's going on
 
-#Value of states
-states[42]
-#Confirm is is 0.41
-states[42] == 0.41
+round(bad_nextpops[2], 2)
+states[36]
+round(bad_nextpops[2], 2) == states[36]
+states[36] == 0.35
 
-#WHAT???
-
-#Try another value from states
-states[41]
-states[41] == 0.40
-
-# THIS works??? 
+# For some reason, some values in the states vector are not recognized as what they are?? 
 
 # So that is VERY STRANGE... but found the function "pmatch" that seems to alleviate this
 # by converting things to characters and then matching them
@@ -561,9 +558,7 @@ for (i in 1:length(states)) {
 # We look for each state which column of Q corresponds to the #maximum of the last updated value 
 # of Vt (the one at time t+1). If the index vector is longer than 1 #(if there is more than one optimal value we chose the minimum #harvest rate)
 	D2[i] <- A[(median(which(round(Q2[i,],1) == round(Vt2[i], 1))))]
-	#print(pmatch(Vt2[i], Q2[i,]))
-	  #A[(min(which(Q2[i,] == Vt2[i])))]
-	  #
+
 }
 # Remove 0 starting prevalence since 0 will remain at 0 and any intervention will be "optimal"
 as.data.frame(cbind(D2 = D2[-1], states = states[-1])) %>% 
@@ -573,24 +568,118 @@ ggplot(aes(x = states, y = D2)) + geom_line(size = 1) +
 
 ```
 
-Cool! The general trend makes sense: at low starting prevalence, we minimize prevalence over twenty years by reducing transmission via investment in environmental remediation (e.g. $A_t\rightarrow0$). When prevalence is high, though, this environmental remediation must be supplemented with MDA to effectively reduce prevalence (e.g. $A_t\rightarrow1$). This is in line with the findings of Garchitorenea et al as well: if all we do is annual MDA, we end up with those "sawtooth" curves in which prevalence inevitably bounces back after treatment, but with some environmental intervention added in, we can reduce that rate of bounce back and make progress towards elimination.
+This implies that full allocation of capital to MDA, (e.g. $A_t\rightarrow1$) is most effective for most situations where prevalence is greater than about 10%. This makes sense since MDA is so effective (90% reduction annually) in these simulations and we still have half of all transmission being driven by human-to-human transmission which is not affected at all by the environmental intervention. To address one of these issues, let's bump down the effectiveness of the MDA intervention to something a bit more reasonable. 70% is still very optimistic, but more reasonable than 90%.
 
-We can also explain the jagged line by looking at some of the results a bit more closely:
+```{r reduce_MDA, cache = TRUE}
+#Parameters for the model and utility function: 
+mdp_pars2 <- mdp_pars 
+#Reduce MDA efficacy
+mdp_pars2["theta"] <- 0.7
 
-```{r inspect_results}
+#Transition matrix for I states and A actions
+transition3 <- array(0, dim = c(length(states), length(states), length(A)))
+
+#Utility matrix
+utility3 <- array(0, dim = c(length(states), length(A)))
+
+# Fill in the transition and utility matrices
+# Loop on all states 
+# TODO: make this Tidy
+for (i in 1:length(states)) {
+
+	# Loop on all actions
+	for (a in 1:length(A)) {
+
+# Calculate the transition state at the next step, given the current state i and the intervention, a
+		nextpop <- round(mdp_1yr(A_t = A[a], I_0 = states[i], pars = mdp_pars2), 2)
+		nextind <- pmatch(nextpop, states) #replace which[] with pmatch
+		
+#Since this model is deterministic, assign probability of 1 to value of I_t+1, everything else =0		
+		transition3[i, nextind, a] <- 1
+
+# Compute utility
+		utility3[i,a] <- get_util(nextpop)
+
+	} # end of action loop
+} # end of state loop
+
+# Run mdp check
+mdp_check(transition3, utility3)
+
+#No error which means all our rows sum to 1. Woohoo!
+
+# Action value vector at tmax
+Vtmax3 <- numeric(length(states))
+
+# Action value vector at t and t+1
+Vt3 <- numeric(length(states))
+Vtplus3 <- numeric(length(states))
+
+# Optimal policy vector
+D3 <- numeric(length(states))
+
+for (t in (Tmax-1):1) {
+
+# We define a matrix Q that stores the updated action values for #all states (rows)
+	# actions (columns)
+	Q3 <- array(0, dim=c(length(states), length(A)))
+	
+	for (i in 1:length(A)) {
+	
+# For each capital allocation proportion we fill for all states values (row) #the ith column (Action) of matrix Q
+# The utility of the ith action recorded for all states is 
+# added to the product of the transition matrix of the ith 
+# action by the action value of all states 
+		Q3[,i] <- utility3[,i] + discount*(transition3[,,i] %*% Vtplus3)
+	
+	} # end of the harvest loop
+
+	# Find the optimal action value at time t is the maximum of Q
+	Vt3 <- apply(Q3, 1, max)
+
+# After filling vector Vt of the action values at all states, 
+# we update the vector Vt+1 to Vt and we go to the next step standing 
+# for previous time t-1, since we iterate backward
+	Vtplus3 <- Vt3
+
+} # end of the time loop
+
+# Find optimal action for each state
+for (i in 1:length(states)) {
+# We look for each state which column of Q corresponds to the #maximum of the last updated value 
+# of Vt (the one at time t+1). If the index vector is longer than 1 #(if there is more than one optimal value we chose the minimum #harvest rate)
+	D3[i] <- A[(median(which(round(Q3[i,],1) == round(Vt3[i], 1))))]
+
+}
+# Remove 0 starting prevalence since 0 will remain at 0 and any intervention will be "optimal"
+as.data.frame(cbind(D3 = D3[-1], states = states[-1])) %>% 
+ggplot(aes(x = states, y = D3)) + geom_line(size = 1) + 
+    theme_bw() + ylab(expression(A[t])) + xlab(expression(I[t])) + stat_smooth() +
+    ggtitle("Optimal actions given starting prevalence", 
+            subtitle = "50% MDA coverage")
+
+```
+
+So if we reduce the maximum effect that MDA can have, out optimal value of $A_t$ decreases to a narrow range around 0.4, implying roughly equal devotion of capital to MDA and environmental intervention. It's interesting that this result is fairly consistent regardless of the starting prevalence. Intuition would imply that MDA dominates at high starting prevalences and environmental intervention is more effective at low starting prevalence. There is a bit of a trend that matches this intuition, but not as strong as we may have expected a priori. This is more in line with the findings of Garchitorenea et al though: if all we do is annual MDA, we end up with those "sawtooth" curves in which prevalence inevitably bounces back after treatment, but with some environmental intervention added in, we can reduce that rate of bounce back and make progress towards elimination over time.  
+
+We can also explain the jagged line in the optimal allocation plot by looking at some of the results a bit more closely:
+
+```{r inspect_results2}
 #Each row of Q2 contains the output of our utility function summed over the time horizon (20 years)
 # for a given starting prevalence and each of the 100 possible valeus of A_t.
-data.frame(a_t = rep(A, 3),
-           i_0 = rep(c(50, 75, 90), each = length(A)),
-           Max_ut = c(Q2[51,], Q2[76,], Q2[91,])) %>% 
+data.frame(a_t = rep(A, 4),
+           i_0 = rep(c(25, 50, 75, 90), each = length(A)),
+           Max_ut = c(Q3[26,], Q3[51,], Q3[76,], Q3[91,])) %>% 
   ggplot(aes(x = a_t, y = Max_ut, col = as.factor(i_0))) + geom_line(size = 1) + 
     theme_bw() + guides(col=guide_legend(title=expression(I[t]))) + xlab(expression(A[t])) + ylab(expression(-Pi[T]))
 
 ```
 
-This shows that there's not much variability in which action, $A_t$ is best given a starting prevalence $I_t$, i.e. for starting prevalence of $I-t=90\%$, values of $A_t$ between about 0.33 through about 0.97 all have the same total utility and the median value of $A_t$ which achieves this utility is what's plotted in the Optimal Allocation plot. Changing our time horizon to be something like 100 years rather than 20 may smooth this out by adding more variability in how the interventions affect summed prevalence over time, but 20 years is a reasonable time horizon to shoot for disease elimination, so we'll stick with it.  
+This shows that there's not much variability in which action, $A_t$ is best given a starting prevalence $I_t$, i.e. for starting prevalence of $I-t=90\%$, many values of $A_t$ have the same total utility and the median value of $A_t$ which achieves this utility is what's plotted in the Optimal Allocation plot. Changing our time horizon to be something like 100 years rather than 20 may smooth this out by adding more variability in how the interventions affect summed prevalence over time, but 20 years is a reasonable time horizon to shoot for disease elimination, so we'll stick with it.  
 
-```{r, eval = FALSE, echo = FALSE, include=FALSE}
+In conclusion: estimating optimal intervention strategies across the full range of possible community prevalences for a disease transmitted with equal intensity beteween environment-human and human-human transmission routes shows that a one-shot solution is not likely given reasonable expectations of intervention efficacies. Instead, roughly equal allocation of capital between drug-based and environmental interventions is likely to optimally reduce community prevalence. Future analyses will consider more dynamic intervention scenarios in which seasonality, accumulation of capital, and stochasticity influence when and how capital is committed to reducing disease prevalence. Finally, future analysis should more tightly couple the transmission dynamics with particular infectious diseases, ideally beginning by fitting the model to longitudinal prevalence data of that disease. The current model with equal transmission intensity between human-human and environment-human routes does not really have a real-life analog, rather most diseases are heavily, if not completely, dominated by a single transmission pathway.
+
+```{r kewl, eval = FALSE, include = FALSE, echo = FALSE}
 data.frame(a_t = rep(A, 5),
            i_0 = rep(c(0.01,0.1,0.25,0.5,0.75), each = length(A))) %>% 
   mutate(i_t_plus1 = map2_dbl(a_t, i_0, mdp_1yr)) %>% 
