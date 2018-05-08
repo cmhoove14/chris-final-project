@@ -1,13 +1,14 @@
 ---
-title: Optimal control of neglected tropical diseases using a simple dynamic model
+title: "Optimal control of neglected tropical diseases using a simple dynamic model"
 author: "Chris Hoover"
-date: "`r format(Sys.Date(), '%m-%d-%Y')`"
-math: TRUE
+date: "May 18, 2018"
 output: 
-  pdf_document:
+  pdf_document: 
+    latex_engine: xelatex
   header-includes: 
     - \usepackage{bf}
     - \usepackage{threeparttable}
+
 geometry: margin=0.5in
 ---
 
@@ -407,13 +408,14 @@ for (t in (Tmax-1):1) {
 	
 	for (i in 1:length(A)) {
 	
-# For each capital allocation proportion we fill for all states values (row) #the ith column (Action) of matrix Q
+# For each capital allocation proportion we fill for all states values (row) 
+# the ith column (Action) of matrix Q
 # The utility of the ith action recorded for all states is 
 # added to the product of the transition matrix of the ith 
 # action by the action value of all states 
 		Q[,i] <- utility[,i] + discount*(transition[,,i] %*% Vtplus)
 	
-	} # end of the harvest loop
+	} # end of loop
 
 	# Find the optimal action value at time t is the maximum of Q
 	Vt <- apply(Q, 1, max)
@@ -427,10 +429,12 @@ for (t in (Tmax-1):1) {
 
 # Find optimal action for each state
 for (i in 1:length(states)) {
-# We look for each state which column of Q corresponds to the #maximum of the last updated value 
-# of Vt (the one at time t+1). If the index vector is longer than 1 #(if there is more than one optimal value we chose the minimum #harvest rate)
-	D[i] <- A[which(Q[i,] == Vt[i])]
-	  #A[(min(which(Q[i,] == Vt[i])))]
+# We look for each state which column of Q corresponds to the 
+# maximum of the last updated value 
+# of Vt (the one at time t+1). If the index vector is longer than 1 
+# (if there is more than one optimal value we chose the median capital allocation rate)
+	D[i] <- A[(median(which(Q[i,] == Vt[i])))]
+
 }
 
 plot(states, D, xlab="Initial Prevalence", ylab="Optimal Allocation", type = 'l', lwd = 2)
@@ -461,16 +465,25 @@ which(states == round(bad_nextpops, 2))
 
 #So for some reason, rounding the output from the mdp_1yr function to two digits
 #and getting the corresponding vector index in states is not working for these values
+#Value of nextpop
 round(bad_nextpops[1], 2)
+#Confirmed it is 0.41
 round(bad_nextpops[1], 2) == 0.41
 
+#Value of states
 states[42]
+#Confirm is is 0.41
 states[42] == 0.41
 
+#WHAT???
+
+#Try another value from states
 states[41]
 states[41] == 0.40
 
-# So that is VERY STRANGE... found the function "pmatch" that seems to alleviate this
+# THIS works??? 
+
+# So that is VERY STRANGE... but found the function "pmatch" that seems to alleviate this
 # by converting things to characters and then matching them
 pmatch(round(bad_nextpops[1], 2), states)
 ```
