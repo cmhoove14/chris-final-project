@@ -2,7 +2,7 @@
 title: "Optimal control of neglected tropical diseases using a simple dynamic model"
 author: "Chris Hoover"
 date: "May 18, 2018"
-output: html_document 
+output: pdf_document 
 geometry: margin=0.5in
 ---
 
@@ -570,7 +570,7 @@ ggplot(aes(x = states, y = D2)) + geom_line(size = 1) +
 
 This implies that full allocation of capital to MDA, (e.g. $A_t\rightarrow1$) is most effective for most situations where prevalence is greater than about 10%. This makes sense since MDA is so effective (90% reduction annually) in these simulations and we still have half of all transmission being driven by human-to-human transmission which is not affected at all by the environmental intervention. To address one of these issues, let's bump down the effectiveness of the MDA intervention to something a bit more reasonable. 70% is still very optimistic, but more reasonable than 90%.
 
-```{r reduce_MDA, cache = TRUE}
+```{r reduce_MDA, cache=TRUE}
 #Parameters for the model and utility function: 
 mdp_pars2 <- mdp_pars 
 #Reduce MDA efficacy

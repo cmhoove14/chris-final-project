@@ -10,4 +10,4 @@ before_install:
 #latex: false
 
 script:
-  - R -e 'lapply(list.files(pattern=".*.Rmd", recursive=TRUE), rmarkdown::render)'
+  - R -e 'lapply(list.files(pattern=".*.Rmd", recursive=TRUE), rmarkdown::render, envir = globalenv())'
