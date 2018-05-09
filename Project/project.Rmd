@@ -446,10 +446,3 @@ plot(states, D, xlab="Initial Prevalence", ylab="Optimal Allocation", type = 'l'
 
 This isn't exactly what we were expecting, let's do some debugging. MDPtoolbox has a function to check that our transition and utility matrices are formatted properly and contain the right kind of data, let's use that
 
-```{r check}
-mdp_check(transition, utility)
-```
-
-So looks like some rows in our transition matrix are not summing to 1. Let's try and figure out why.
-
-
