@@ -2,7 +2,7 @@
 title: "Optimal control of neglected tropical diseases using a simple dynamic model"
 author: "Chris Hoover"
 date: "May 18, 2018"
-output: github_document 
+output: html_document 
 geometry: margin=0.5in
 ---
 
@@ -445,4 +445,245 @@ plot(states, D, xlab="Initial Prevalence", ylab="Optimal Allocation", type = 'l'
 ```
 
 This isn't exactly what we were expecting, let's do some debugging. MDPtoolbox has a function to check that our transition and utility matrices are formatted properly and contain the right kind of data, let's use that
+
+```{r check}
+mdp_check(transition, utility)
+```
+
+So looks like some rows in our transition matrix are not summing to 1. Let's try and figure out why.
+
+```{r prob_id}
+#Get sum of rows in the slice of the array in which A_t = 50
+rowSums(transition[,,50])
+
+# Get indices of states vector that returns rowsum of 0 rather than 1  
+bad_vec <- which(rowSums(transition[,,50]) == 0)
+
+#Run the mdp function with states that return rowsum=0 and try and match it to indices in states vector
+# this is what is being done when building the transition matrix
+bad_nextpops <- map2_dbl(rep(0.5, length(bad_vec)), states[bad_vec], mdp_1yr)
+round(bad_nextpops, 2)
+
+which(states == round(bad_nextpops, 2))
+
+#So for some reason, rounding the output from the mdp_1yr function to two digits
+#and getting the corresponding vector index in states is not working for these values
+# Here's an example of what's happening. I have no idea what's going on
+
+round(bad_nextpops[2], 2)
+states[36]
+round(bad_nextpops[2], 2) == states[36]
+states[36] == 0.35
+
+# For some reason, some values in the states vector are not recognized as what they are?? 
+
+# So that is VERY STRANGE... but found the function "pmatch" that seems to alleviate this
+# by converting things to characters and then matching them
+pmatch(round(bad_nextpops[1], 2), states)
+```
+
+```{r trans_matrix_redo, cache = TRUE}
+#Transition matrix for I states and A actions
+transition2 <- array(0, dim = c(length(states), length(states), length(A)))
+
+#Utility matrix
+utility2 <- array(0, dim = c(length(states), length(A)))
+
+# Fill in the transition and utility matrices
+# Loop on all states 
+# TODO: make this Tidy
+for (i in 1:length(states)) {
+
+	# Loop on all actions
+	for (a in 1:length(A)) {
+
+# Calculate the transition state at the next step, given the current state i and the intervention, a
+		nextpop <- round(mdp_1yr(A_t = A[a], I_0 = states[i]), 2)
+		nextind <- pmatch(nextpop, states) #replace which[] with pmatch
+		
+#Since this model is deterministic, assign probability of 1 to value of I_t+1, everything else =0		
+		transition2[i, nextind, a] <- 1
+
+# Compute utility
+		utility2[i,a] <- get_util(nextpop)
+
+	} # end of action loop
+} # end of state loop
+
+# Run mdp check
+mdp_check(transition2, utility2)
+
+#No error which means all our rows sum to 1. Woohoo!
+```
+
+```{r try_again}
+# Action value vector at tmax
+Vtmax2 <- numeric(length(states))
+
+# Action value vector at t and t+1
+Vt2 <- numeric(length(states))
+Vtplus2 <- numeric(length(states))
+
+# Optimal policy vector
+D2 <- numeric(length(states))
+
+for (t in (Tmax-1):1) {
+
+# We define a matrix Q that stores the updated action values for #all states (rows)
+	# actions (columns)
+	Q2 <- array(0, dim=c(length(states), length(A)))
+	
+	for (i in 1:length(A)) {
+	
+# For each capital allocation proportion we fill for all states values (row) #the ith column (Action) of matrix Q
+# The utility of the ith action recorded for all states is 
+# added to the product of the transition matrix of the ith 
+# action by the action value of all states 
+		Q2[,i] <- utility2[,i] + discount*(transition2[,,i] %*% Vtplus2)
+	
+	} # end of the harvest loop
+
+	# Find the optimal action value at time t is the maximum of Q
+	Vt2 <- apply(Q2, 1, max)
+
+# After filling vector Vt of the action values at all states, 
+# we update the vector Vt+1 to Vt and we go to the next step standing 
+# for previous time t-1, since we iterate backward
+	Vtplus2 <- Vt2
+
+} # end of the time loop
+
+# Find optimal action for each state
+for (i in 1:length(states)) {
+# We look for each state which column of Q corresponds to the #maximum of the last updated value 
+# of Vt (the one at time t+1). If the index vector is longer than 1 #(if there is more than one optimal value we chose the minimum #harvest rate)
+	D2[i] <- A[(median(which(round(Q2[i,],1) == round(Vt2[i], 1))))]
+
+}
+# Remove 0 starting prevalence since 0 will remain at 0 and any intervention will be "optimal"
+as.data.frame(cbind(D2 = D2[-1], states = states[-1])) %>% 
+ggplot(aes(x = states, y = D2)) + geom_line(size = 1) + 
+    theme_bw() + ylab(expression(A[t])) + xlab(expression(I[t])) + stat_smooth() +
+    ggtitle("Optimal actions given starting prevalence")
+
+```
+
+This implies that full allocation of capital to MDA, (e.g. $A_t\rightarrow1$) is most effective for most situations where prevalence is greater than about 10%. This makes sense since MDA is so effective (90% reduction annually) in these simulations and we still have half of all transmission being driven by human-to-human transmission which is not affected at all by the environmental intervention. To address one of these issues, let's bump down the effectiveness of the MDA intervention to something a bit more reasonable. 70% is still very optimistic, but more reasonable than 90%.
+
+```{r reduce_MDA, cache = TRUE}
+#Parameters for the model and utility function: 
+mdp_pars2 <- mdp_pars 
+#Reduce MDA efficacy
+mdp_pars2["theta"] <- 0.7
+
+#Transition matrix for I states and A actions
+transition3 <- array(0, dim = c(length(states), length(states), length(A)))
+
+#Utility matrix
+utility3 <- array(0, dim = c(length(states), length(A)))
+
+# Fill in the transition and utility matrices
+# Loop on all states 
+# TODO: make this Tidy
+for (i in 1:length(states)) {
+
+	# Loop on all actions
+	for (a in 1:length(A)) {
+
+# Calculate the transition state at the next step, given the current state i and the intervention, a
+		nextpop <- round(mdp_1yr(A_t = A[a], I_0 = states[i], pars = mdp_pars2), 2)
+		nextind <- pmatch(nextpop, states) #replace which[] with pmatch
+		
+#Since this model is deterministic, assign probability of 1 to value of I_t+1, everything else =0		
+		transition3[i, nextind, a] <- 1
+
+# Compute utility
+		utility3[i,a] <- get_util(nextpop)
+
+	} # end of action loop
+} # end of state loop
+
+# Run mdp check
+mdp_check(transition3, utility3)
+
+#No error which means all our rows sum to 1. Woohoo!
+
+# Action value vector at tmax
+Vtmax3 <- numeric(length(states))
+
+# Action value vector at t and t+1
+Vt3 <- numeric(length(states))
+Vtplus3 <- numeric(length(states))
+
+# Optimal policy vector
+D3 <- numeric(length(states))
+
+for (t in (Tmax-1):1) {
+
+# We define a matrix Q that stores the updated action values for #all states (rows)
+	# actions (columns)
+	Q3 <- array(0, dim=c(length(states), length(A)))
+	
+	for (i in 1:length(A)) {
+	
+# For each capital allocation proportion we fill for all states values (row) #the ith column (Action) of matrix Q
+# The utility of the ith action recorded for all states is 
+# added to the product of the transition matrix of the ith 
+# action by the action value of all states 
+		Q3[,i] <- utility3[,i] + discount*(transition3[,,i] %*% Vtplus3)
+	
+	} # end of the harvest loop
+
+	# Find the optimal action value at time t is the maximum of Q
+	Vt3 <- apply(Q3, 1, max)
+
+# After filling vector Vt of the action values at all states, 
+# we update the vector Vt+1 to Vt and we go to the next step standing 
+# for previous time t-1, since we iterate backward
+	Vtplus3 <- Vt3
+
+} # end of the time loop
+
+# Find optimal action for each state
+for (i in 1:length(states)) {
+# We look for each state which column of Q corresponds to the #maximum of the last updated value 
+# of Vt (the one at time t+1). If the index vector is longer than 1 #(if there is more than one optimal value we chose the minimum #harvest rate)
+	D3[i] <- A[(median(which(round(Q3[i,],1) == round(Vt3[i], 1))))]
+
+}
+# Remove 0 starting prevalence since 0 will remain at 0 and any intervention will be "optimal"
+as.data.frame(cbind(D3 = D3[-1], states = states[-1])) %>% 
+ggplot(aes(x = states, y = D3)) + geom_line(size = 1) + 
+    theme_bw() + ylab(expression(A[t])) + xlab(expression(I[t])) + stat_smooth() +
+    ggtitle("Optimal actions given starting prevalence", 
+            subtitle = "50% MDA coverage")
+
+```
+
+So if we reduce the maximum effect that MDA can have, out optimal value of $A_t$ decreases to a narrow range around 0.4, implying roughly equal devotion of capital to MDA and environmental intervention. It's interesting that this result is fairly consistent regardless of the starting prevalence. Intuition would imply that MDA dominates at high starting prevalences and environmental intervention is more effective at low starting prevalence. There is a bit of a trend that matches this intuition, but not as strong as we may have expected a priori. This is more in line with the findings of Garchitorenea et al though: if all we do is annual MDA, we end up with those "sawtooth" curves in which prevalence inevitably bounces back after treatment, but with some environmental intervention added in, we can reduce that rate of bounce back and make progress towards elimination over time.  
+
+We can also explain the jagged line in the optimal allocation plot by looking at some of the results a bit more closely:
+
+```{r inspect_results2}
+#Each row of Q2 contains the output of our utility function summed over the time horizon (20 years)
+# for a given starting prevalence and each of the 100 possible valeus of A_t.
+data.frame(a_t = rep(A, 4),
+           i_0 = rep(c(25, 50, 75, 90), each = length(A)),
+           Max_ut = c(Q3[26,], Q3[51,], Q3[76,], Q3[91,])) %>% 
+  ggplot(aes(x = a_t, y = Max_ut, col = as.factor(i_0))) + geom_line(size = 1) + 
+    theme_bw() + guides(col=guide_legend(title=expression(I[t]))) + xlab(expression(A[t])) + ylab(expression(-Pi[T]))
+
+```
+
+This shows that there's not much variability in which action, $A_t$ is best given a starting prevalence $I_t$, i.e. for starting prevalence of $I-t=90\%$, many values of $A_t$ have the same total utility and the median value of $A_t$ which achieves this utility is what's plotted in the Optimal Allocation plot. Changing our time horizon to be something like 100 years rather than 20 may smooth this out by adding more variability in how the interventions affect summed prevalence over time, but 20 years is a reasonable time horizon to shoot for disease elimination, so we'll stick with it.  
+
+In conclusion: estimating optimal intervention strategies across the full range of possible community prevalences for a disease transmitted with equal intensity beteween environment-human and human-human transmission routes shows that a one-shot solution is not likely given reasonable expectations of intervention efficacies. Instead, roughly equal allocation of capital between drug-based and environmental interventions is likely to optimally reduce community prevalence. Future analyses will consider more dynamic intervention scenarios in which seasonality, accumulation of capital, and stochasticity influence when and how capital is committed to reducing disease prevalence. Finally, future analysis should more tightly couple the transmission dynamics with particular infectious diseases, ideally beginning by fitting the model to longitudinal prevalence data of that disease. The current model with equal transmission intensity between human-human and environment-human routes does not really have a real-life analog, rather most diseases are heavily, if not completely, dominated by a single transmission pathway.
+
+```{r kewl, eval = FALSE, include = FALSE, echo = FALSE}
+data.frame(a_t = rep(A, 5),
+           i_0 = rep(c(0.01,0.1,0.25,0.5,0.75), each = length(A))) %>% 
+  mutate(i_t_plus1 = map2_dbl(a_t, i_0, mdp_1yr)) %>% 
+  ggplot(aes(x = a_t, y = i_t_plus1, col = as.factor(i_0))) + geom_line(size = 1) + 
+    theme_bw() + guides(col=guide_legend(title=expression(I[t]))) + xlab(expression(A[t])) + ylab(expression(I[t+1]))
+```
 
