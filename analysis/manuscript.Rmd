@@ -1,0 +1,51 @@
+---
+title: "Schisto Optimal Control"
+
+author:  |
+  | Christopher M. Hoover $^1$, Carl Boettiger $^2$, Justin Remais $^1$ 
+  | $^1$UC Berkeley EHS, $^2$UC Berkeley ESPM
+  
+abstract: |
+  Abstract goes here...
+
+# bibliography: 
+# csl:
+  
+output: word_document
+fig_caption: yes
+
+header-includes:
+  - \usepackage{endfloat}    
+  - \usepackage{setspace}\doublespacing
+  - \usepackage{lineno}
+  - \linenumbers
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Introduction  
+* Development as a driver of infectious disease control and elimination
+  * Current strategies to control infectious diseases of poverty/Neglected tropical diseases do not attempt to complement or take advantage of development
+* Current global strategy for schistosomiasis control and elimination relies on mass drug administration (MDA), which is plagued by reinfection  
+* Reliance on MDA based on quick reductions in morbidity, but does not consider DALYs accumulated over long time periods
+* Control and elimination strategies that complement development by considering longterm goals of elimination may be more effective in reducing cumulative burden over medium to long tim horizons  
+* Optimal control theory/stochastic dynamic programming used to explore optimal strategies in managed systems with uncertainty
+
+# Methods and analysis  
+## Data  
+### Cost of interventions  
+* [Lo et al PNAS](http://www.pnas.org/content/early/2018/01/03/1708729114) 
+
+### Development rates  
+
+## Models  
+* 
+
+## Analysis  
+*
+
+# Results  
+
+# Discussion  

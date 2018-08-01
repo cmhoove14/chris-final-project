@@ -653,7 +653,7 @@ for (i in 1:length(states)) {
 }
 # Remove 0 starting prevalence since 0 will remain at 0 and any intervention will be "optimal"
 as.data.frame(cbind(D3 = D3[-1], states = states[-1])) %>% 
-ggplot(aes(x = states, y = D3)) + geom_line(size = 1) + 
+ggplot(aes(x = states, y = D3)) + #geom_line(size = 1) + 
     theme_bw() + ylab(expression(A[t])) + xlab(expression(I[t])) + stat_smooth() +
     ggtitle("Optimal actions given starting prevalence", 
             subtitle = "50% MDA coverage")

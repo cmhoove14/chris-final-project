@@ -1,0 +1,117 @@
+---
+title: "Schisto Specific Optimal Control"
+author: "Chris Hoover"
+date: "June 14, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+require(tidyverse)
+require(kableExtra)
+require(knitr)
+require(deSolve)
+require(rootSolve)
+require(MDPtoolbox)
+```
+
+Using the simple, generalizable model of NTD transmission presented in [Garchitorena et al](http://dx.doi.org/10.1098/rstb.2016.0128), the model will first be modified to represent schistosomiasis transmission. Two interventions will then be considered: 1) mass drug administration, implemented as a pulse reduction in the state variable, $I$, that reduces the prevalence of the disease in the population and 2) Snail control implemented as a pulsed increase in the mortality rate of intermediate host snails, which affects the state variable $W$ representing environmental contamination. 
+
+# The model  
+The model consists of two state variables, $I$ and $W$, that correspond to the prevalence of infection in the human population (i.e. proportion infected at time=$t$) and the degree of contamination of the environment with the disease-causing agent, respectively. We make the simplifying assumption that individuals can only be susceptible, $S$, or infected, $I$, meaning $S+I=1$ and eliminating the need for a recovered $R$ compartment as is typical of SIR models but would complicate things here. The model equations then are:  
+
+$$\frac{dI}{dt}=(\beta_EW+\beta_DI)(1-I)-\gamma I $$ 
+
+$$\frac{dW}{dt}=\Omega+V\sigma\lambda I-\rho W $$
+with parameter definitions in table 1 below
+
+```{r table1, echo = FALSE, include = TRUE, dev="tikz" }
+tab1 <- data.frame(des = c("Transmission rate from environment to human population",
+                           "Human to human transmission rate",
+                           "Rate of recovery from infected back to susceptible",
+                           "Recruitment rate of infectious agents in the environment",
+                           "Abundance of vectors/intermediate hosts/suitable environment",
+                           "Recruitment rate of infectious agents by infectious individuals",
+                           "Fraction of infectious agents produced that reach the environment",
+                           "Mortality rate of infectious agents in the environment"))
+
+rownames(tab1) <- c("$\\beta_E$","$\\beta_D$","$\\gamma$","$\\Omega$",
+                     "$V$","$\\lambda$","$\\sigma$","$\\rho$")
+
+knitr::kable(tab1, row.names = TRUE, col.names = c("Description"), format = "latex", escape = FALSE, caption = "Parameter values and descriptions used in the model")
+```
+
+To convert this generalizable NTD model to a generalizable schisto model, we make the following assumptions:  
++ There is no exogenous production of infectious agents ($\Omega=0$) 
++ There is no human-to-human transmission ($\beta_D=0$)  
+
+This leaves us with:
+
+$$\frac{dI}{dt}=\beta_EW(1-I)-\gamma I $$  
+
+$$\frac{dW}{dt}=V\sigma\lambda I-\rho W $$
+
+Where $\beta_E$ can be interpreted as the snail-to-man transmission parameter and $\lambda$ can be interpreted as the man-to-snail transmission parameter.
+
+With this simplified model, we can get the equilibrium estimates of $W$ and $I$:
+$$\frac{dW}{dt}=V\sigma\lambda I-\rho W$$  
+At equilibrium:  
+$$W^*=\frac{V\sigma\lambda I}{\rho}$$
+Substituting we get the following quadratic with solutions at $I^*=0$ and $I^*=\text{endemic equilibrium}$ for equilibrium prevalence:
+$$0=\Big(\frac{\beta_EV\sigma\lambda I^*}{\rho}\Big)\Big(1-I^*\Big)-\gamma I^* $$
+
+## Translate the model into a Markov Decision Process (MDP) solvable with stochastic dynamic programming (SDP)   
+Next we want to translate our system of continuous time differential equations into a Markov Decision Process (MDP) consisting of **1)** a Markov chain in which the state of the system at time $t+1$ is dependent only on the current state of the system (i.e. the state at $t$) and **2)** a decision or control action that is being made at each state transition (i.e. from $t$ to $t+1$). We therefore want a single, discrete time equation that captures about the same dynamics of our simple disease system.
+
+Working from the equation for equilibrium prevalence above, we translate to a discrete time model as:  
+$$I_{t+1}=I_t+\Big(\frac{\beta_EV\sigma\lambda I_t}{\rho}\Big)\Big(1-I_t\Big)-\gamma I_t$$
+
+# Model parameterization and fitting  
+We first obtain some parameters from the literature:  
++ $\gamma =$ `r round(1/(3.3*365), 3)` - Approximate lifespan of an adult schistosome in days
++ $V=$ `30` - Approximate density of intermediate host snail population ($m^2$); can implement seasonality in this parameter later  
++ $\sigma=$ `0.08` - Fraction of infectious agents produced that reach the environment, here informed by schistosome egg viability  
++ $\rho=$ `0.017` - Mortality rate of infectious agents in the environment, here interpreted as mean daily mortality rate of intermediate snail hosts  
+
+This leaves us with $\beta_E$ and $\lambda$, the two transmission parameters to estimate, which we can do using the original two parameter model above with adequate snail and human infection data. We can also use an estimate of $R_0$ to simplify simulations though.  
+
+Since schisto is exclusively environmentally transmitted, we can estimate the environmental reproduction number ($R_{0E}$) as in [Garchitorena et al](http://dx.doi.org/10.1098/rstb.2016.0128) as:
+$$R_{0E}=\frac{\beta_EV\sigma\lambda}{\gamma\rho}$$
+equivalently: 
+$$R_{0E}\gamma=\frac{\beta_EV\sigma\lambda}{\rho}$$
+
+Which, substituted into the discrete time equation gives:  
+$$I_{t+1}=I_t+(R_{0E}\gamma)(1-I_t)-\gamma I_t$$
+
+Let's do a check to make sure the dynamics of this system are reasonable for $R_{0E}=4$. By the same logic as above, we can estimate $I^*$ as:
+$$0=(R_{0E}\gamma I^*)(1-I^*)-\gamma I^* $$
+
+```{r get_eq}
+parameters = c(gamma = 1/(3.3*365),
+               v = 30,
+               sigma = 0.08,
+               rho = 0.017)
+
+#Function to get equilibrium prevalence (I) and equilibrium environmental contamination (W)
+get_I_star <- function(parameters, r0e){
+  with(as.list(parameters),{
+    init <- rootSolve::uniroot.all(function(I) (r0e*gamma*I)*(1-I) - gamma*I,
+                                   interval = c(0,1))
+    eq_I <- init[which(init > 0)]
+    #eq_W <- (v*sigma*lambda*eq_I)/rho
+    
+    return(eq_I)
+  })  
+}
+
+r0es <- seq(1,10,.01)
+
+I_stars <- sapply(r0es, get_I_star, parameters = parameters)
+
+plot(r0es, I_stars, type = 'l', lwd = 2, main = "equilibrium prevalence given r0")
+```
+
+# Seasonality  
+
+# Stochasticity  
