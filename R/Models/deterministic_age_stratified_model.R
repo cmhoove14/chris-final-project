@@ -23,10 +23,10 @@ schisto_age_stratified=function(t, n, parameters) {
       #k_Wu_adult = get_clump(Wu_adult)
     
     #Estimate mating probability within each strata 
-      phi_Wt_SAC = phi_Wk(W = Wt_SAC, k = k)  #Mating probability in treated SAC population
-      phi_Wu_SAC = phi_Wk(W = Wu_SAC, k = k)  #Mating probability in untreated SAC population
-      phi_Wt_adult = phi_Wk(W = Wt_adult, k = k)  #Mating probability in treated adult population
-      phi_Wu_adult = phi_Wk(W = Wu_adult, k = k)  #Mating probability in untreated adult population
+      phi_Wt_SAC = phi_Wk(W = Wt_SAC, k = k_SAC)  #Mating probability in treated SAC population
+      phi_Wu_SAC = phi_Wk(W = Wu_SAC, k = k_SAC)  #Mating probability in untreated SAC population
+      phi_Wt_adult = phi_Wk(W = Wt_adult, k = k_adult)  #Mating probability in treated adult population
+      phi_Wu_adult = phi_Wk(W = Wu_adult, k = k_adult)  #Mating probability in untreated adult population
 
     #Estimate miracidia produced by each strata as function of mated female worms, eggs produced per female worm per 10mL urine, reduction in fecundity due to crowding, mL urine produced in each group/10, contamination coefficient for SAC/adults and egg viability  
       M_Wt_SAC = fem_worms(W = Wt_SAC,
@@ -76,3 +76,14 @@ schisto_age_stratified=function(t, n, parameters) {
                   dWt_adultdt, dWu_adultdt)))
   }) 
 } 
+
+sim_schisto_age_stratified <- function(nstart, time, parameters, events_df = NA){
+  
+  if(is.na(events_df)){
+    out <- ode(nstart, time, schisto_age_stratified, parameters)
+  } else {
+    out <- ode(nstart, time, schisto_age_stratified, parameters, events = list(data = events_df))
+  }
+  
+  return(as.matrix(out))
+}
