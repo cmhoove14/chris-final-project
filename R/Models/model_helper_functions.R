@@ -39,3 +39,10 @@ k_from_prev_W <- function(W, prev){
   uniroot(function(x) 1-prev-(1+W/x)^-x,
           interval = c(0,3))$`root`
 }
+
+#Get clumping parameter from egg output measured in egg/10mL urine
+#this function estimated from our s. haematobium burden in Senegal in script "worm_burden_distn_analysis.R"
+#This is from log-log relationship
+k_from_log_w <- function(w){
+  exp(-2.8079+0.39*log(50))
+}
