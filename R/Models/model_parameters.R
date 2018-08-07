@@ -18,7 +18,7 @@ pars1=c(
   
   #Adult Worm, Miracidia and Circariae Parameters
     mu_W = 1/(3.3*365), # death rate of adult worms
-    m = 3.6,              # mean eggs shed per female worm per 10mL urine
+    m = 5.2,            # mean eggs shed per female worm per 10mL urine (truscott et al)
     v = 0.08,           # mean egg viability of eggs shed into environment  
     gam = 0.001,        # parameter of fecundity reduction function 
 
