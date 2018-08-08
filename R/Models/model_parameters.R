@@ -23,8 +23,6 @@ pars1=c(
     gam = 0.001,        # parameter of fecundity reduction function 
 
   #Human parameters
-    k_SAC=0.08, # clumping parameter of the negative binomial distribution in SAC
-    k_adult=0.08,  # clumping parameter of the negative binomial distribution in adults
     u_SAC = 50, # mL urine per SAC/day/10mL assumed to be half of adult
     u_adult = 100, # mL urine per SAC/day/10mL (approximate, ranges from 80 - 200)
     rho_SAC = 0.4, # relative number of eggs shed by SAC that make it to snail habitat (~sanitation)

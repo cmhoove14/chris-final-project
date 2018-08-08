@@ -34,15 +34,24 @@ fem_worms <- function(W, phi, H, prop, cvrg){
   0.5*(W*phi)*((H*prop)*cvrg)
 }
 
-#Get clumping parameter from mean worm burden and prevalence
-k_from_prev_W <- function(W, prev){
-  uniroot(function(x) 1-prev-(1+W/x)^-x,
+#Get clumping parameter from mean egg burden and prevalence
+k_from_prev_M <- function(M, prev){
+  uniroot(function(x) 1-prev-(1+M/x)^-x,
           interval = c(0,3))$`root`
 }
 
-#Get clumping parameter from egg output measured in egg/10mL urine
-#this function estimated from our s. haematobium burden in Senegal in script "worm_burden_distn_analysis.R"
-#This is from log-log relationship
-k_from_log_w <- function(w){
-  exp(-2.8079+0.39*log(50))
+#Get estimate of mean worm burden from mean egg burden taking into account assumption of mean eggs per mated female worm per 10mL urine, shape of mating probability function, and shape of female worm fecundity function  
+w_from_m_k <- function(M, k){
+  uniroot(function(w) 0.5*w*as.numeric(pars1["m"])*
+            (1 + (w*(1-(exp(-as.numeric(pars1["gam"])))))/k)^(-k-1)*
+            phi_Wk(w, k) - M,
+          interval = c(0, 1000))$`root`
 }
+
+#Get clumping parameter from mean worm burden estimate
+#this function estimated from our s. haematobium data in Senegal in script "worm_burden_distn_analysis.R"
+#This is from log-linear relationship with mean worm burden
+k_from_log_w <- function(w){
+  0.03362+0.09033*log(w)
+}
+

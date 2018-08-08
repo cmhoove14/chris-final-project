@@ -9,50 +9,50 @@ schisto_age_stratified=function(t, n, parameters) {
     Wu_SAC=n[5]
     Wt_adult=n[6]
     Wu_adult=n[7]
+    
     N=S+E+I
     
-    W_SAC = (cvrg_SAC*Wt_SAC) + ((1-cvrg_SAC)*Wu_SAC)           #weighting treated and untreated populations
-    W_adult = (cvrg_adult*Wt_adult) + ((1-cvrg_adult)*Wu_adult) #weighting treated and untreated populations
+    W_SAC = (cvrg_SAC*Wt_SAC) + ((1-cvrg_SAC)*Wu_SAC)           #weighting treated and untreated populations among SAC
+    W_adult = (cvrg_adult*Wt_adult) + ((1-cvrg_adult)*Wu_adult) #weighting treated and untreated populations among adults
     
     W_tot = W_SAC*prop_SAC + W_adult*prop_adult
     
-    #Estimate clumping parameter, k from worm burden data, this function needs to be developed
-      #k_Wt_SAC = get_clump(Wt_SAC)
-      #k_Wu_SAC = get_clump(Wu_SAC)
-      #k_Wt_adult = get_clump(Wt_adult)
-      #k_Wu_adult = get_clump(Wu_adult)
+    #Update clumping parameter, k from estimate of eggs burden per 10mL estimate
+      k1 = k_from_log_w(Wt_SAC)
+      k2 = k_from_log_w(Wu_SAC)
+      k3 = k_from_log_w(Wt_adult)
+      k4 = k_from_log_w(Wu_adult)
+    
+      #print(c(k1, k2, k3, k4))
     
     #Estimate mating probability within each strata 
-      phi_Wt_SAC = phi_Wk(W = Wt_SAC, k = k_SAC)  #Mating probability in treated SAC population
-      phi_Wu_SAC = phi_Wk(W = Wu_SAC, k = k_SAC)  #Mating probability in untreated SAC population
-      phi_Wt_adult = phi_Wk(W = Wt_adult, k = k_adult)  #Mating probability in treated adult population
-      phi_Wu_adult = phi_Wk(W = Wu_adult, k = k_adult)  #Mating probability in untreated adult population
-
-    #Estimate miracidia produced by each strata as function of mated female worms, eggs produced per female worm per 10mL urine, reduction in fecundity due to crowding, mL urine produced in each group/10, contamination coefficient for SAC/adults and egg viability  
-      M_Wt_SAC = fem_worms(W = Wt_SAC,
-                           phi = phi_Wt_SAC,
-                           H = H,
-                           prop = prop_SAC,
-                           cvrg = cvrg_SAC) * m * f_Wgk(Wt_SAC, gam, k) * v * u_SAC * rho_SAC
+      phi_Wt_SAC = phi_Wk(W = Wt_SAC, k = k1)  #Mating probability in treated SAC population
+      phi_Wu_SAC = phi_Wk(W = Wu_SAC, k = k2)  #Mating probability in untreated SAC population
+      phi_Wt_adult = phi_Wk(W = Wt_adult, k = k3)  #Mating probability in treated adult population
+      phi_Wu_adult = phi_Wk(W = Wu_adult, k = k4)  #Mating probability in untreated adult population
       
-      M_Wu_SAC = fem_worms(W = Wu_SAC,
-                           phi = phi_Wu_SAC,
-                           H = H,
-                           prop = prop_SAC,
-                           cvrg = (1-cvrg_SAC)) * m * f_Wgk(Wu_SAC, gam, k) * v * u_SAC * rho_SAC
+      #print(c(phi_Wt_SAC, phi_Wu_SAC, phi_Wt_adult, phi_Wu_adult))
       
-      M_Wt_adult = fem_worms(W = Wt_adult,
-                             phi = phi_Wt_adult,
-                             H = H,
-                             prop = prop_adult,
-                             cvrg = cvrg_adult) * m * f_Wgk(Wt_adult, gam, k) * v * u_adult * rho_adult
+    #Estimate mean eggs produced per person in each strata as product of mated female worms, eggs produced per female worm per 10mL urine, and reduction in fecundity due to crowding
+      eggs_Wt_SAC = 0.5*(Wt_SAC*phi_Wt_SAC) * m * f_Wgk(Wt_SAC, gam, k1)
       
-      M_Wu_adult = fem_worms(W = Wu_adult,
-                             phi = phi_Wu_adult,
-                             H = H,
-                             prop = prop_adult,
-                             cvrg = (1-cvrg_adult)) * m * f_Wgk(Wu_adult, gam, k) * v * u_adult * rho_adult
-    
+      eggs_Wu_SAC = 0.5*(Wu_SAC*phi_Wu_SAC) * m * f_Wgk(Wu_SAC, gam, k2)
+      
+      eggs_Wt_adult = 0.5*(Wt_adult*phi_Wt_adult) * m * f_Wgk(Wt_adult, gam, k3) 
+      
+      eggs_Wu_adult = 0.5*(Wu_adult*phi_Wu_adult) * m * f_Wgk(Wu_adult, gam, k4)
+ 
+      #print(c(eggs_Wt_SAC, eggs_Wu_SAC, eggs_Wt_adult, eggs_Wu_adult))
+      
+    #Estimate miracidia produced by each strata as product of mean eggs per 10 mL urine for individuals in each strata, mean mL urine produced by an average individual in each group/10, number of people in each strata, contamination coefficient for SAC/adults, and egg viability  
+      M_Wt_SAC = eggs_Wt_SAC * ((H*prop_SAC)*cvrg_SAC) * v * u_SAC * rho_SAC
+      
+      M_Wu_SAC = eggs_Wu_SAC * ((H*prop_SAC)*(1-cvrg_SAC)) * v * u_SAC * rho_SAC
+      
+      M_Wt_adult = eggs_Wt_adult * ((H*prop_adult)*cvrg_adult) * v * u_adult * rho_adult
+      
+      M_Wu_adult =  eggs_Wu_adult * ((H*prop_adult)*(1-cvrg_adult)) * v * u_adult * rho_adult
+       
     #Total miracidia snails are exposed to  
       M = M_Wt_SAC + M_Wu_SAC + M_Wt_adult + M_Wu_adult
       
@@ -68,8 +68,6 @@ schisto_age_stratified=function(t, n, parameters) {
       dWu_SACdt= (omega_SAC*lambda*I) - (mu_W*Wu_SAC)
       dWt_adultdt= (omega_adult*lambda*I) - (mu_W*Wt_adult)
       dWu_adultdt= (omega_adult*lambda*I) - (mu_W*Wu_adult)
-      
-    
     
     return(list(c(dSdt,dEdt,dIdt,
                   dWt_SACdt,dWu_SACdt,
@@ -85,5 +83,5 @@ sim_schisto_age_stratified <- function(nstart, time, parameters, events_df = NA)
     out <- ode(nstart, time, schisto_age_stratified, parameters, events = list(data = events_df))
   }
   
-  return(as.matrix(out))
+  return(as.data.frame(out))
 }
