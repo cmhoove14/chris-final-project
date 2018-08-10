@@ -1,0 +1,110 @@
+---
+title: "Optimal Control Notebook"
+author: "Chris Hoover"
+date: "August 9, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+require(deSolve)
+require(fitdistrplus)
+require(adaptivetau)
+require(tidyverse)
+```
+
+Starting a lab notebook type of thing for this project to gather my thoughts as ideas evolve.
+
+# Aug 9, 2018  
+A quick recap of what I've worked on up to this point: This work started as a final project for ESPM-288 using a really simple dynamic model to explore optimal control of a generic disease with an environmental component. Details of that project are in the [archive folder of this repository](https://github.com/cmhoove14/optimal_control/tree/master/Archive/Project). Moving into the DS421 summer RET, the goal is to apply the same idea to a schisto specific model/question. I've gone through a few iterations of what exactly the question is, but as of now -- after a lot of reading schisto modeling papers, results from the big [SCORE project](https://score.uga.edu/), etc. -- I think I've settled on something like: what is the optimal control strategy for schistosomiasis control/elimination in the presence of uncertainty around diagnosis and transmission?
+
+So the next question is how to build a model that has adequate functionality to tackle this question. By "adequate functionality", the model should be able to:
+* Simulate multiple kinds of interventions and their combinations including: school-based MDA, community-based MDA, test-and treat DA, mollusciciding, sanitation interventions, improved water access, and maybe "alternative" strategies like prawn interventions  
+* Consistently measure the impact of different interventions by the same criteria (think optimization function)  
+* Accurately represent transmission dynamics at ranges of intensity from approaching elimination to highly endemic   
+* Simulate uncertain diagnostics (which comes down to egg excretion) of infected individuals
+* Simulate multiple kinds of diagnostics (e.g. those that confirm presence/absence and those that quantify egg burden) and along those lines, incorporate multiple community measures of infection like prevalence and mean worm/egg burden  
+
+I've been working on a couple models that basically build on models I've used for other projects: a continuous time, deterministic model with an SEI framework in the snail population and mean worm burden in treated and untreated portions of the human population and a stochastic model with the same basic structure that uses the gillespie algorithm in the `adaptivetau` package to model stochastic events. These were both used in the [elimination feasibility project](https://github.com/cmhoove14/AgroSchisto/tree/master/Elimination_Feasibility/Organize/Models) which basically modeled community wide MDA. I've expanded them to include a school-age-children (SAC) population and an adult population, each with treated and untreated portions, and also tweaked a few of the underlying dynamics. I also spent a lot of time figuring out the best way to estimate how the clumping parameter of the negative binomially distributed worms in the human population (e.g. in MWB models) changes over time, e.g. as the population is subjected to repeated control efforts like MDA. See those efforts using data from Senegal in the script `worm_burden_distn_analysis`. Also have an ongoing effort to collect reported estimates of mean worm burden and prevalence in different populations and try and generate a function that predicts the clumping parameter in a meta-analytic kind of way. That data is collected in [this google spreadsheet](https://docs.google.com/spreadsheets/d/1_q1mgW1m1dHwlA40yjn72xVTtEgZMkzfiCXHTqGPz60/edit?usp=sharing)
+
+The deterministic model was fit to a community in Senegal, Diokhor Tack (actually one of 16 communities, but it had the simplest worm burden trajectory to make sense of), where we have a baseline estimate of mean worm burden in SAC and then two additional mean worm burden estimates following annual MDA among SAC. The model doesn't fit perfectly, but it's about par for the course (see plot below)
+
+```{r det_model_fit, echo = FALSE}
+load("R/Models/Deterministic/deterministic_DT_fit.RData")
+
+#Heat map of negLL over range of beta and lambda (transmission parameters)   
+  test_pars %>% 
+    ggplot(aes(x = beta, y = lambda, fill = negLL)) +
+    geom_tile() + scale_fill_gradient(low = "white", high = "black") +
+    ggtitle(label = "Deterministic model fit results", subtitle = "Negative LL over transmission parameter sets")
+
+source("R/Models/Deterministic/deterministic_age_stratified_model.R")
+source("R/Models/model_helper_functions.R")
+source("R/Models/Deterministic/deterministic_fit_functions.R")  
+  
+  #Run model to equilibrium with best fit parameter set
+    best_fit_eqbm <- sim_schisto_age_stratified(nstart = setNames(c(40*area*.7, 40*area*.2, 40*area*.1,
+                                                                  w_obs_SAC[1], w_obs_SAC[1],
+                                                                  w_obs_adult[1], w_obs_adult[1]),
+                                                                c('S', 'E', 'I', 
+                                                                  'Wt_SAC', 'Wu_SAC',
+                                                                  'Wt_adult', 'Wu_adult')),
+                                              time = seq(0, 365*30, 30),
+                                              parameters = pars_DT_fit,
+                                              events_df = NA)
+    
+  #Simulate over period matching data collection  
+    best_fit_sim <- sim_schisto_age_stratified(nstart = setNames(as.numeric(best_fit_eqbm[dim(best_fit_eqbm)[1], c(2:8)]),
+                                                            c('S', 'E', 'I', 
+                                                              'Wt_SAC', 'Wu_SAC',
+                                                              'Wt_adult', 'Wu_adult')), 
+                                          time = sim_time,
+                                          parameters = pars_DT_fit,
+                                          events_df = yrly_mdas)
+    
+    best_fit_sim <- best_fit_sim %>% 
+      mutate(N = S+E+I,
+             S_prop = S/N,
+             E_prop = E/N,
+             I_prop = I/N,
+             time_year = (time/365)+2016)
+
+comm_haem_sums %>% mutate(year = as.numeric(year)) %>% filter(school == "DT") %>% 
+  ggplot(aes(x = year, y = w_est)) +
+    geom_line() + 
+    geom_point() + 
+    geom_errorbar(aes(x = year, ymin = w_est - w_se_est, ymax = w_est + w_se_est), width = 0.05) +
+    theme_bw() + ggtitle("Model fit to DT") +
+    ylim(c(0,40)) + xlim(c(2015.5, 2018.1)) +
+    geom_line(data = best_fit_sim, aes(x = time_year, y = Wt_SAC))
+
+```
+
+These same parameters were then used to run the stochastic version of the model which produces an example run shown below. Transmission doesn't seem to be strong enough to sustain endemicity in the stochastic model which doesn't seem right. I think it has something to do with the way mean worm burden is modeled since the stochastic model is based on discrete events, losing one "mean worm" is way different than losing 1 actual worm, so this doesn't really work great either without some more tweaking. 
+
+```{r stoch_mod_run, echo = FALSE}
+source("R/Models/stochastic_age_stratified_model.R")
+
+#Run the stochastic model for twenty years with equilibrium estimates from deterministic model as starting conditions and best fit parameters
+stoch_mod_test_DT <- ssa.adaptivetau(setNames(round(as.numeric(best_fit_eqbm[dim(best_fit_eqbm)[1], c(2:8)])),
+                                 c('S', 'E', 'I', 
+                                   'Wt_SAC', 'Wu_SAC',
+                                   'Wt_adult', 'Wu_adult')),
+                        transitions, sfx, as.data.frame(t(pars_DT_fit)), tf = 365*20)
+
+as.data.frame(stoch_mod_test_DT) %>% 
+  gather("Pop", "MWB", Wt_SAC:Wu_adult) %>% 
+  ggplot(aes(x = time, y = MWB, lty = Pop)) +
+    geom_line() + theme_bw() + ylim(c(0,50))
+
+as.data.frame(stoch_mod_test_DT) %>% 
+  gather("Infection", "Density", S:I) %>% 
+  ggplot(aes(x = time, y = Density/area, col = Infection)) +
+    geom_line() + theme_bw() #+ ylim(c(0,50))
+
+```
+
+So I got thinking about an individual-based model (IBM) for the human population because it would allow for direct accounting for variability that occurs at the individual level like water contact, sanitation patterns, egg shedding as a function of individual worm burden, etc. I don't envision an easy way to do this in a continuous time framework with ODEs, so I'm going to implement a discrete time model with an SEI snail population and an IBM human population.
+
+# Aug 10, 2018  
