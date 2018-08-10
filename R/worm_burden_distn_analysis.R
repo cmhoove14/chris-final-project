@@ -43,7 +43,7 @@ comm_haem_sums <- data.frame(t(mapply(comm_haem_sum, skewl = comm_yrs[,1], yr = 
          k_from_prev_m = map2_dbl(nb_mu, prev, k_from_prev_M),
          w_est = map2_dbl(nb_mu, nb_k, w_from_m_k),
          w_sd_est = sqrt(w_est+(w_est^2)/nb_k),
-         w_se_est = w_sd_est/samp_size)
+         w_se_est = w_sd_est/sqrt(samp_size))
 
 rm(list = setdiff(ls(),"comm_haem_sums"))
 
@@ -128,5 +128,3 @@ both_prev_mod <- glm(nb_k ~ prev + hvy_prev, data = comm_haem_sums, weights = sa
 mu_prev_mod <- glm(nb_k ~ prev + w_est, data = comm_haem_sums, weights = samp_size)
 
 AIC(w_mod, quad_w_mod, log_w_mod, w_mod_log, log_w_mod_log, prev_mod, prev_mod_log, hvy_prev_mod, both_prev_mod, mu_prev_mod)
-
-dev.off()
