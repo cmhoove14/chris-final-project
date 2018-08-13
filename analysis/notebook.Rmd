@@ -30,8 +30,8 @@ I've been working on a couple models that basically build on models I've used fo
 
 The deterministic model was fit to a community in Senegal, Diokhor Tack (actually one of 16 communities, but it had the simplest worm burden trajectory to make sense of), where we have a baseline estimate of mean worm burden in SAC and then two additional mean worm burden estimates following annual MDA among SAC. The model doesn't fit perfectly, but it's about par for the course (see plot below)
 
-```{r det_model_fit, echo = FALSE}
-load("R/Models/Deterministic/deterministic_DT_fit.RData")
+```{r det_model_fit, echo = FALSE, warnings = FALSE}
+load("../R/Models/Deterministic/deterministic_DT_fit.RData")
 
 #Heat map of negLL over range of beta and lambda (transmission parameters)   
   test_pars %>% 
@@ -39,9 +39,9 @@ load("R/Models/Deterministic/deterministic_DT_fit.RData")
     geom_tile() + scale_fill_gradient(low = "white", high = "black") +
     ggtitle(label = "Deterministic model fit results", subtitle = "Negative LL over transmission parameter sets")
 
-source("R/Models/Deterministic/deterministic_age_stratified_model.R")
-source("R/Models/model_helper_functions.R")
-source("R/Models/Deterministic/deterministic_fit_functions.R")  
+source("../R/Models/Deterministic/deterministic_age_stratified_model.R")
+source("../R/Models/model_helper_functions.R")
+source("../R/Models/Deterministic/deterministic_fit_functions.R")  
   
   #Run model to equilibrium with best fit parameter set
     best_fit_eqbm <- sim_schisto_age_stratified(nstart = setNames(c(40*area*.7, 40*area*.2, 40*area*.1,
@@ -77,14 +77,14 @@ comm_haem_sums %>% mutate(year = as.numeric(year)) %>% filter(school == "DT") %>
     geom_errorbar(aes(x = year, ymin = w_est - w_se_est, ymax = w_est + w_se_est), width = 0.05) +
     theme_bw() + ggtitle("Model fit to DT") +
     ylim(c(0,40)) + xlim(c(2015.5, 2018.1)) +
-    geom_line(data = best_fit_sim, aes(x = time_year, y = Wt_SAC))
+    geom_line(data = best_fit_sim, aes(x = time_year, y = Wt_SAC), col = 2)
 
 ```
 
 These same parameters were then used to run the stochastic version of the model which produces an example run shown below. Transmission doesn't seem to be strong enough to sustain endemicity in the stochastic model which doesn't seem right. I think it has something to do with the way mean worm burden is modeled since the stochastic model is based on discrete events, losing one "mean worm" is way different than losing 1 actual worm, so this doesn't really work great either without some more tweaking. 
 
 ```{r stoch_mod_run, echo = FALSE}
-source("R/Models/stochastic_age_stratified_model.R")
+source("../R/Models/stochastic_age_stratified_model.R")
 
 #Run the stochastic model for twenty years with equilibrium estimates from deterministic model as starting conditions and best fit parameters
 stoch_mod_test_DT <- ssa.adaptivetau(setNames(round(as.numeric(best_fit_eqbm[dim(best_fit_eqbm)[1], c(2:8)])),
@@ -108,3 +108,31 @@ as.data.frame(stoch_mod_test_DT) %>%
 So I got thinking about an individual-based model (IBM) for the human population because it would allow for direct accounting for variability that occurs at the individual level like water contact, sanitation patterns, egg shedding as a function of individual worm burden, etc. I don't envision an easy way to do this in a continuous time framework with ODEs, so I'm going to implement a discrete time model with an SEI snail population and an IBM human population.
 
 # Aug 10, 2018  
+The IBM model for the human population is actually something I thought about at DAIDD back in December 2016, but never actually acted on. It's also been done before for schisto by Anderson and co (of course), so I'll draw from those models as well. Just sort of going to vomit ideas from here:
+
+## Snail SEI model  
+We'll treat infection dynamics in the snail population the same as always with an SEI framework. In discrete time, this looks something like:
+
+$$S_{t+1}=S_t\big(1+f_N(S_t+zE_t)(1-\frac{N}{K})-\mu_N-\Lambda\big)$$ 
+
+$$E_{t+1}=E_t+\Lambda S_t-\mu_NE_t-\sigma E_t)$$  
+
+$$I_{t+1}=I_t+\sigma E_t-(\mu_N+\mu_I)I_t$$  
+
+where $f_N$ is the mean snail recruitment rate, $0<z<1$ is the reduced contribution of exposed snails to recruitment (infected snails are assumed castrated), $K$ is the environmental carrying capacity, $\mu_N$ is the mean snail mortality rate, and $\Lambda$ is the man-to-snail force of infection (FOI) 
+
+$\Lambda$ is a function of many processes and I'll draw on the work of [Gurarie et al](https://parasitesandvectors.biomedcentral.com/articles/10.1186/s13071-016-1681-4), to estimate it. It is obviously directly related to the number of miracidia in the snail environment, $M$ which is a product of many processes including:  
+* Egg laying by mated adult female worms  
+* Egg shedding by human hosts  
+* Human behaviors that determine the amount of infectious material that ends up in the environment (e.g. sanitation)  
+* Overlap of snail habitat with habitat where infectious material is deposited  
+* Miracidial mortality  
+
+Egg laying can be estimated as a function of the number of mated female worms in a particular host, $w_{ij}^f$ and the expected fecundity of a mated female host, $\rho_0$ taking into account density dependent reduction in fecundity due to crowding, $0<\rho(w_{ij})<1$ where $\rho(w_{ij})=\Big(1+\frac{w_{ij}(1-e^{-\gamma})}{k}\Big)^{-(k+1)}$ **on a population level, but I'll have to do some digging to determine how this affects fecundity within an individual host.**. Egg shedding is then a negative binomially distributed random process with mean $\rho_0\rho(w_{ij})w_{ij}^f$ and dipsersion ??? 
+
+Egg shedding  
+
+#To-Dos  
+Section to list to do items as they pop in my head, I'll tag items with the date of completion so they can be found above as they are completed  
+* Seasonality in snail population  
+* Fecundity reduction in individual hosts rather than in a population with mean worm burden and distribution  
