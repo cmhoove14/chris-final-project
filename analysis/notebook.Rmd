@@ -136,3 +136,4 @@ Egg shedding
 Section to list to do items as they pop in my head, I'll tag items with the date of completion so they can be found above as they are completed  
 * Seasonality in snail population  
 * Fecundity reduction in individual hosts rather than in a population with mean worm burden and distribution  
+* Role of systematic non compliance vs random compliance vs semi-systematic compliance of drug acceptance in optimal strategy  
