@@ -1,5 +1,4 @@
-[![Build Status](https://www.travis-ci.com/ds421/chris-final-project.svg?token=qTkbdq2hEerAisqz6ww7&branch=master)](https://travis-ci.com/ds421/chris-final-project)
-
+[![Build Status](https://travis-ci.com/cmhoove14/optimal_control.svg?branch=master)](https://travis-ci.com/cmhoove14/optimal_control)
 
 ## Team members:  
 + Chris Hoover, cmhoove14
