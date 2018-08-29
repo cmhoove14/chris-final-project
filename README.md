@@ -1,10 +1,12 @@
 [![Build Status](https://travis-ci.com/cmhoove14/optimal_control.svg?branch=master)](https://travis-ci.com/cmhoove14/optimal_control)
 
-## Team members:  
-+ Chris Hoover, cmhoove14
+## Contact:  
++ Chris Hoover, cmhoove14, choover@berkeley.edu  
 
 ## Project:  
 Using optimal control theory to identify cost-optimal interventions for control and elimination of schistosomiasis in different settings. Building on a previous project for ESPM 288 investigating optimal control of a simple infectious disease system, work for which can be found in the **Archive** folder. 
+
+## Contents:  
 
 ### data folder  
 Contains raw data used for this project such as epi data (that's non-sensitive) and large `.RData` files that are outputs of more intensive simulations  

@@ -21,9 +21,10 @@ A quick recap of what I've worked on up to this point: This work started as a fi
 
 So the next question is how to build a model that has adequate functionality to tackle this question. By "adequate functionality", the model should be able to:
 * Simulate multiple kinds of interventions and their combinations including: school-based MDA, community-based MDA, test-and treat DA, mollusciciding, sanitation interventions, improved water access, and maybe "alternative" strategies like prawn interventions  
+
 * Consistently measure the impact of different interventions by the same criteria (think optimization function)  
 * Accurately represent transmission dynamics at ranges of intensity from approaching elimination to highly endemic   
-* Simulate uncertain diagnostics (which comes down to egg excretion) of infected individuals
+* Simulate uncertain diagnostics (which comes down to egg excretion) of infected individuals  
 * Simulate multiple kinds of diagnostics (e.g. those that confirm presence/absence and those that quantify egg burden) and along those lines, incorporate multiple community measures of infection like prevalence and mean worm/egg burden  
 
 I've been working on a couple models that basically build on models I've used for other projects: a continuous time, deterministic model with an SEI framework in the snail population and mean worm burden in treated and untreated portions of the human population and a stochastic model with the same basic structure that uses the gillespie algorithm in the `adaptivetau` package to model stochastic events. These were both used in the [elimination feasibility project](https://github.com/cmhoove14/AgroSchisto/tree/master/Elimination_Feasibility/Organize/Models) which basically modeled community wide MDA. I've expanded them to include a school-age-children (SAC) population and an adult population, each with treated and untreated portions, and also tweaked a few of the underlying dynamics. I also spent a lot of time figuring out the best way to estimate how the clumping parameter of the negative binomially distributed worms in the human population (e.g. in MWB models) changes over time, e.g. as the population is subjected to repeated control efforts like MDA. See those efforts using data from Senegal in the script `worm_burden_distn_analysis`. Also have an ongoing effort to collect reported estimates of mean worm burden and prevalence in different populations and try and generate a function that predicts the clumping parameter in a meta-analytic kind of way. That data is collected in [this google spreadsheet](https://docs.google.com/spreadsheets/d/1_q1mgW1m1dHwlA40yjn72xVTtEgZMkzfiCXHTqGPz60/edit?usp=sharing)
@@ -122,6 +123,7 @@ $$I_{t+1}=I_t+\sigma E_t-(\mu_N+\mu_I)I_t$$
 where $f_N$ is the mean snail recruitment rate, $0<z<1$ is the reduced contribution of exposed snails to recruitment (infected snails are assumed castrated), $K$ is the environmental carrying capacity, $\mu_N$ is the mean snail mortality rate, and $\Lambda$ is the man-to-snail force of infection (FOI) 
 
 $\Lambda$ is a function of many processes and I'll draw on the work of [Gurarie et al](https://parasitesandvectors.biomedcentral.com/articles/10.1186/s13071-016-1681-4), to estimate it. It is obviously directly related to the number of miracidia in the snail environment, $M$ which is a product of many processes including:  
+
 * Egg laying by mated adult female worms  
 * Egg shedding by human hosts  
 * Human behaviors that determine the amount of infectious material that ends up in the environment (e.g. sanitation)  
@@ -134,6 +136,7 @@ Egg shedding
 
 #To-Dos  
 Section to list to do items as they pop in my head, I'll tag items with the date of completion so they can be found above as they are completed  
+
 * Seasonality in snail population  
 * Fecundity reduction in individual hosts rather than in a population with mean worm burden and distribution  
 * Role of systematic non compliance vs random compliance vs semi-systematic compliance of drug acceptance in optimal strategy  

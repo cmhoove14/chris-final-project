@@ -21,9 +21,20 @@ header-includes:
   - \linenumbers
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, message = FALSE, warning = FALSE}
 knitr::opts_chunk$set(echo = FALSE)
+
+knitr::opts_chunk$set(fig.pos = 'p') # Places figures on their own pages
+knitr::opts_chunk$set(out.width = '100%', dpi=300)
+
+require(adaptivetau)
+require(deSolve)
+require(tidyverse)
 ```
+
+### Potential titles  
+* From control to elimination of schistosomiasis: insights from helminth biology and optimal control theory  
+* Optimal control of schistosomiasis in the presence of diagnostic and epidemiologic uncertainty
 
 # Introduction  
 * Development as a driver of infectious disease control and elimination
@@ -41,7 +52,11 @@ knitr::opts_chunk$set(echo = FALSE)
 ### Development rates  
 
 ## Models  
-* 
+### SDP framework  
+* Objective is to minimize the cost/DALY averted with cost measured in USD and DALYs estimated from models implementing interventions and simulated through time  
+* State variable *W*, the mean worm burden in the human population, is affected by interventions and used to estimate DALYs averted  
+* Decision variable is where/when to where to commit capital to interventions. I.e. which interventions and at what time (esp. considering seasonal transmission)
+* Transition model
 
 ## Analysis  
 *
