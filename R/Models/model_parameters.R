@@ -4,7 +4,7 @@
   prop_SAC = 0.3       #Percent of people that are school age children (SAC)
   prop_adult = 1-prop_SAC #percent of people that are not school age children (assumed here to be adults)
   
-  cvrg_SAC = 1
+  cvrg_SAC = 0.8
   cvrg_adult = 1
 
 #Parameters used in elimination feasibility work #####################
