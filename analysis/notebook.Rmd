@@ -45,7 +45,7 @@ source("../R/Models/model_helper_functions.R")
 source("../R/Models/Deterministic/deterministic_fit_functions.R")  
   
   #Run model to equilibrium with best fit parameter set
-    best_fit_eqbm <- sim_schisto_age_stratified(nstart = setNames(c(40*area*.7, 40*area*.2, 40*area*.1,
+    best_fit_eqbm <- sim_schisto_age_stratified(nstart = setNames(c(30*area*.7, 20*area*.2, 40*area*.1,
                                                                   w_obs_SAC[1], w_obs_SAC[1],
                                                                   w_obs_adult[1], w_obs_adult[1]),
                                                                 c('S', 'E', 'I', 
